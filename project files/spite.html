@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Spite & Malice Prototype</title>
+<style>
+body {
+    background: #0b5e2e;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+.table {
+    margin: 20px;
+}
+.stack, .card {
+    display: inline-block;
+    padding: 10px;
+    margin: 5px;
+    border-radius: 8px;
+    background: white;
+    color: black;
+    min-width: 40px;
+    cursor: pointer;
+}
+.selected {
+    outline: 3px solid yellow;
+}
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+}
+h2 {
+    margin-top: 30px;
+}
+</style>
+</head>
+<body>
+
+<h1>Spite & Malice</h1>
+
+<div id="game"></div>
+
+<script>
+const suits = ["♥","♦","♣","♠"];
+const values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const valueOrder = Object.fromEntries(values.map((v,i)=>[v,i+1]));
+
+let deck = [];
+for(let i=0;i<2;i++){
+    for(let v of values){
+        for(let s of suits){
+            deck.push({value:v,suit:s});
+        }
+    }
+}
+deck.sort(()=>Math.random()-0.5);
+
+let center = [[],[],[],[],[]];
+let playerDiscards = [[],[],[],[],[]];
+let aiDiscards = [[],[],[],[],[]];
+
+let playerHand = draw(5);
+let aiHand = draw(5);
+
+let selectedIndex = null;
+
+function draw(n){
+    let cards = [];
+    for(let i=0;i<n;i++){
+        if(deck.length>0) cards.push(deck.pop());
+    }
+    return cards;
+}
+
+function cardStr(c){ return c.value + c.suit; }
+
+function canPlay(card, stack){
+    if(stack.length===0) return card.value==="A";
+    return valueOrder[card.value] === valueOrder[stack[stack.length-1].value] + 1;
+}
+
+function clearIfKing(stack){
+    if(stack.length>0 && stack[stack.length-1].value==="K"){
+        stack.length=0;
+    }
+}
+
+function smartDiscard(card, stacks){
+    let val = valueOrder[card.value];
+
+    for(let s of stacks){
+        if(s.length>0 && valueOrder[s[s.length-1].value]===val){
+            s.push(card); return true;
+        }
+    }
+    for(let s of stacks){
+        if(s.length>0 && valueOrder[s[s.length-1].value]===val+1){
+            s.push(card); return true;
+        }
+    }
+    for(let s of stacks){
+        if(s.length===0){
+            s.push(card); return true;
+        }
+    }
+    return false;
+}
+
+function playAll(hand, discards){
+    let played=true;
+    while(played){
+        played=false;
+        for(let i=0;i<hand.length;i++){
+            let c = hand[i];
+            if(!c) continue;
+            for(let stack of center){
+                if(canPlay(c,stack)){
+                    stack.push(c);
+                    hand[i]=null;
+                    clearIfKing(stack);
+                    played=true;
+                    break;
+                }
+            }
+            if(played) break;
+        }
+        for(let stack of discards){
+            if(stack.length===0) continue;
+            let top = stack[stack.length-1];
+            for(let cStack of center){
+                if(canPlay(top,cStack)){
+                    cStack.push(stack.pop());
+                    clearIfKing(cStack);
+                    played=true;
+                    break;
+                }
+            }
+            if(played) break;
+        }
+    }
+}
+
+function aiTurn(){
+    playAll(aiHand, aiDiscards);
+    for(let i=0;i<aiHand.length;i++){
+        if(aiHand[i]){
+            smartDiscard(aiHand[i], aiDiscards);
+            aiHand[i]=null;
+            break;
+        }
+    }
+    aiHand = aiHand.map(c=>c?c:(deck.pop()||null));
+}
+
+function render(){
+    let html = "";
+
+    html += "<h2>Center Stacks</h2>";
+    center.forEach((s,i)=>{
+        html += `<div class='stack'>${s.map(cardStr).join(" ")||"-"}</div>`;
+    });
+
+    html += "<h2>Your Discards</h2>";
+    playerDiscards.forEach(s=>{
+        html += `<div class='stack'>${s.map(cardStr).join(" ")||"-"}</div>`;
+    });
+
+    html += "<h2>Your Hand</h2>";
+    playerHand.forEach((c,i)=>{
+        if(!c) return;
+        html += `<div class='card ${selectedIndex===i?"selected":""}' onclick='selectCard(${i})'>${cardStr(c)}</div>`;
+    });
+
+    html += "<br>";
+    html += "<button onclick='playCard()'>Play</button>";
+    html += "<button onclick='discardCard()'>Discard</button>";
+
+    document.getElementById("game").innerHTML = html;
+}
+
+function selectCard(i){
+    selectedIndex = i;
+    render();
+}
+
+function playCard(){
+    if(selectedIndex===null) return;
+    let card = playerHand[selectedIndex];
+    for(let stack of center){
+        if(canPlay(card,stack)){
+            stack.push(card);
+            playerHand[selectedIndex]=null;
+            clearIfKing(stack);
+            break;
+        }
+    }
+    selectedIndex=null;
+    playerHand = playerHand.map(c=>c?c:(deck.pop()||null));
+    playAll(playerHand, playerDiscards);
+    aiTurn();
+    render();
+}
+
+function discardCard(){
+    if(selectedIndex===null) return;
+    let card = playerHand[selectedIndex];
+    smartDiscard(card, playerDiscards);
+    playerHand[selectedIndex]=null;
+    selectedIndex=null;
+    playerHand = playerHand.map(c=>c?c:(deck.pop()||null));
+    aiTurn();
+    render();
+}
+
+render();
+</script>
+
+</body>
+</html>

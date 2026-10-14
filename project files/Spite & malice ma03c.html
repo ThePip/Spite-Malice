@@ -1,0 +1,3253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spite & Malice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+    --felt: #1a5c1a; --gold: #d4a017; --gold-light: #f0c040;
+    --card-white: #faf8f4; --red: #c41e3a; --black: #1a1a1a;
+    --drag-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+* { box-sizing: border-box; }
+body {
+    background-color: var(--felt);
+    background-image: radial-gradient(ellipse at 30% 20%, rgba(0,80,0,0.25) 0%, transparent 55%);
+    color: white; font-family: 'Crimson Pro', serif;
+    display: flex; flex-direction: column; align-items: center;
+    margin: 0; padding: 6px 8px 14px; min-height: 100vh; user-select: none;
+}
+.suit-large { display: inline-block; transform: scale(1.2); transform-origin: center; line-height: 1; }
+
+/* Top bar */
+.top-bar { width: 100%; max-width: 550px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+h1.game-title { font-family: 'Cinzel', serif; font-size: 22px; letter-spacing: 4px; color: var(--gold); text-shadow: 0 2px 8px rgba(0,0,0,0.5); margin: 0; text-transform: uppercase; flex: 1; text-align: center; }
+.icon-btn { background: none; border: none; color: var(--gold-light); font-size: 20px; cursor: pointer; padding: 4px 7px; border-radius: 4px; line-height: 1; flex-shrink: 0; transition: background 0.15s; }
+.icon-btn:hover { background: rgba(212,160,23,0.15); }
+
+/* Score bar */
+.score-bar { display: flex; gap: 26px; margin-bottom: 9px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 1px; }
+.score-item { display: flex; flex-direction: column; align-items: center; color: #e8d060; }
+.score-value { font-size: 20px; color: var(--gold-light); line-height: 1.1; font-weight: 700; }
+
+/* Floating run word — hovers above active center stack, rises and grows with each card */
+#runWord {
+    position: fixed;
+    pointer-events: none !important;
+    z-index: 8500;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: 6px;
+    white-space: nowrap;
+    transform-origin: center bottom;
+    display: none;
+    will-change: transform;
+    touch-action: none;
+}
+#runWord.active {
+    display: block;
+    animation: runWobble 2.8s ease-in-out infinite;
+}
+
+#runWord.active.settle {
+    animation: runSettle 0.7s ease-out forwards !important;
+}
+@keyframes runSettle {
+    0%   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+    60%  { opacity: 0.6; transform: translateX(-50%) scale(1.3) translateY(-30px); }
+    100% { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-60px); }
+}
+
+@keyframes runWobble {
+    0%   { transform: translateX(-50%) translateY(0px)   rotate(-1deg); }
+    25%  { transform: translateX(calc(-50% + 4px))  translateY(-3px)  rotate(1.2deg); }
+    50%  { transform: translateX(calc(-50% - 3px))  translateY(-5px)  rotate(-0.8deg); }
+    75%  { transform: translateX(calc(-50% + 5px))  translateY(-2px)  rotate(1.5deg); }
+    100% { transform: translateX(-50%) translateY(0px)   rotate(-1deg); }
+}
+
+/* Labeled rows */
+.labeled-row { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; width: 100%; max-width: 550px; }
+.side-label { writing-mode: vertical-rl; transform: rotate(180deg); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(212,160,23,0.7); white-space: nowrap; flex-shrink: 0; padding: 2px 0; }
+.cards-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-start; contain: layout; }
+
+/* Goal row */
+#goalContainer { display: flex; gap: 22px; margin-bottom: 9px; align-items: flex-start; justify-content: center; flex-wrap: nowrap; }
+.goal-col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.goal-col-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(212,160,23,0.7); white-space: nowrap; }
+.goal-col-label.bright { font-size: 12px; color: #e8d060; letter-spacing: 3px; font-weight: 700; }
+
+/* Action buttons */
+#actionButtons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 36px; margin-bottom: 4px; }
+button { padding: 6px 14px; border-radius: 4px; border: 1px solid rgba(212,160,23,0.4); background: linear-gradient(to bottom, rgba(212,160,23,0.25), rgba(212,160,23,0.1)); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; }
+button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgba(212,160,23,0.25)); box-shadow: 0 0 10px rgba(212,160,23,0.3); }
+
+/* Status */
+#statusMsg { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 1px; color: rgba(212,160,23,0.7); margin-bottom: 6px; min-height: 18px; text-align: center; }
+#aiThinking { display: none; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: rgba(255,100,100,0.7); }
+#aiThinking.show { display: block; animation: thinking 1s ease-in-out infinite alternate; }
+@keyframes thinking { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* Divider */
+.divider { width: 100%; max-width: 550px; height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 4px 0 6px; }
+
+/* Cards */
+.card, .top-card, .goal-card { width: 64px; height: 92px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; background-color: var(--card-white); color: var(--black); font-weight: bold; box-shadow: 2px 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 15px; flex-shrink: 0; position: relative; overflow: hidden; padding: 0; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.card, .top-card { cursor: grab; }
+.card:hover, .top-card:hover { transform: translateY(-3px) scale(1.03); box-shadow: 3px 8px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8); z-index: 10; }
+.card.selected { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 3px rgba(212,160,23,0.5), 3px 8px 16px rgba(0,0,0,0.5); transform: translateY(-5px) scale(1.05); }
+.card.dragging, .top-card.dragging { opacity: 0.4; cursor: grabbing; transform: none !important; }
+.drop-zone-active { outline: 2px dashed var(--gold) !important; background-color: rgba(212,160,23,0.15) !important; box-shadow: 0 0 0 4px rgba(212,160,23,0.4), inset 0 0 18px rgba(212,160,23,0.2) !important; animation: pulse-drop 0.8s ease-in-out infinite alternate; }
+@keyframes pulse-drop { from { outline-color: rgba(212,160,23,0.5); } to { outline-color: rgba(212,160,23,1); } }
+.drop-zone-hover { outline: 2px solid #fff !important; background-color: rgba(255,255,255,0.15) !important; transform: scale(1.05); }
+.card-corner { position: absolute; top: 2px; left: 3px; font-size: 9px; line-height: 1.1; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
+.card-pips { display: flex; flex-direction: column; justify-content: space-around; align-items: center; width: 100%; height: 100%; padding: 16px 4px; font-size: 9px; }
+.pip-row { display: flex; justify-content: space-around; width: 100%; }
+.card-center-label { font-size: 15px; font-weight: bold; text-align: center; }
+.red { color: var(--red); } .black { color: #1a1a1a; }
+.stack-wrap, .goal-wrap { display: flex; flex-direction: column; align-items: center; width: 64px; position: relative; padding-bottom: 14px; }
+.stack-layers { position: absolute; top: 0; left: 0; width: 64px; height: 92px; pointer-events: none; }
+.stack-layer { position: absolute; width: 64px; height: 92px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.35); box-sizing: border-box; }
+.stack-layer:last-child { box-shadow: 2px 4px 8px rgba(0,0,0,0.45); }
+.stack-empty { width: 64px; height: 92px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 1px; }
+.goal-card { cursor: pointer; }
+.goal-card:hover { transform: translateY(-3px); box-shadow: 3px 8px 16px rgba(0,0,0,0.5); }
+.draw-card { background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%) !important; color: var(--gold) !important; font-family: 'Cinzel', serif !important; font-size: 9px !important; text-align: center; line-height: 1.4; letter-spacing: 1px; box-shadow: 2px 2px 8px rgba(0,0,0,0.6), inset 0 0 20px rgba(100,50,200,0.2) !important; border: 1px solid rgba(212,160,23,0.3) !important; }
+
+/* Score flash */
+.score-flash { position: fixed; pointer-events: none; z-index: 8000; font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; color: var(--gold-light); text-shadow: 0 0 12px var(--gold); animation: scoreFloat 1.1s ease-out forwards; }
+.score-flash.run-flash { font-size: 28px; color: #ff9900; text-shadow: 0 0 20px #ffaa00, 0 0 40px #ff6600; }
+@keyframes scoreFloat { 0% { opacity: 1; transform: translateY(0) scale(1); } 70% { opacity: 1; transform: translateY(-44px) scale(1.1); } 100% { opacity: 0; transform: translateY(-70px) scale(0.9); } }
+
+/* Drag ghost */
+#dragGhost { position: fixed; pointer-events: none; z-index: 9999; display: none; border-radius: 6px; }
+
+/* Win overlay */
+#winOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; }
+#winOverlay.show { display: flex; }
+.win-box { background: linear-gradient(135deg, #1a1a2e, #2d1b69); border: 2px solid var(--gold); border-radius: 12px; padding: 40px 60px; text-align: center; box-shadow: 0 0 60px rgba(212,160,23,0.4); }
+.win-box h2 { font-family: 'Cinzel', serif; font-size: 32px; color: var(--gold-light); text-shadow: 0 0 20px var(--gold); margin: 0 0 6px; }
+.win-box .win-score { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold); margin: 0 0 4px; min-height: 24px; }
+.win-box p { color: rgba(255,255,255,0.7); font-size: 15px; margin: 0 0 20px; }
+.win-box button { font-size: 13px; padding: 10px 28px; }
+
+/* Settings overlay */
+#settingsOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
+#settingsOverlay.show { display: flex; }
+.settings-box { background: linear-gradient(135deg, #1a1a2e, #162a16); border: 2px solid var(--gold); border-radius: 12px; padding: 32px 44px; min-width: 280px; box-shadow: 0 0 60px rgba(212,160,23,0.3); }
+.settings-box h2 { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold-light); margin: 0 0 22px; text-align: center; letter-spacing: 3px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(212,160,23,0.8); letter-spacing: 1px; }
+.toggle-btn { background: rgba(212,160,23,0.15); border: 1px solid rgba(212,160,23,0.4); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; padding: 5px 14px; border-radius: 4px; cursor: pointer; transition: all 0.15s; min-width: 60px; }
+.toggle-btn:hover { background: rgba(212,160,23,0.3); }
+.toggle-btn.on { background: rgba(212,160,23,0.35); color: #fff; }
+.settings-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 20px 0; }
+.hs-title { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: rgba(212,160,23,0.6); text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+.hs-list { list-style: none; padding: 0; margin: 0 0 14px; }
+.hs-list li { display: flex; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(255,255,255,0.75); padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.hs-list li:first-child { color: var(--gold-light); }
+.hs-list li:last-child { border-bottom: none; }
+.hs-list li span:last-child { color: var(--gold-light); }
+.hs-empty { font-family: 'Cinzel', serif; font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 14px; }
+.scoring-note { font-family: 'Crimson Pro', serif; font-size: 11px; color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 16px; line-height: 1.5; }
+.wild-select { background: rgba(212,160,23,0.1); border: 1px solid rgba(212,160,23,0.4); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; padding: 5px 8px; border-radius: 4px; cursor: pointer; min-width: 100px; }
+.wild-select option { background: #1a1a2e; color: var(--gold-light); }
+
+/* Rules overlay */
+#rulesOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 10100; justify-content: center; align-items: center; }
+#rulesOverlay.show { display: flex; }
+.rules-box {
+    background: linear-gradient(160deg, #1a1a2e 0%, #162a16 100%);
+    border: 2px solid var(--gold);
+    border-radius: 12px;
+    padding: 28px 32px 24px;
+    width: min(480px, 92vw);
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 0 60px rgba(212,160,23,0.35);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,160,23,0.3) transparent;
+}
+.rules-box::-webkit-scrollbar { width: 5px; }
+.rules-box::-webkit-scrollbar-thumb { background: rgba(212,160,23,0.3); border-radius: 4px; }
+.rules-box h2 { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold-light); margin: 0 0 4px; text-align: center; letter-spacing: 3px; text-transform: uppercase; }
+.rules-subtitle { font-family: 'Crimson Pro', serif; font-style: italic; font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; margin: 0 0 20px; }
+.rules-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.4), transparent); margin: 16px 0; }
+.rules-section { margin-bottom: 18px; }
+.rules-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rules-section-title::after { content: ''; flex: 1; height: 1px; background: rgba(212,160,23,0.2); }
+.rules-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    margin-bottom: 9px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 14px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.5;
+}
+.rules-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    width: 22px;
+    text-align: center;
+    margin-top: 1px;
+    filter: drop-shadow(0 0 4px rgba(212,160,23,0.4));
+}
+.rules-item strong { color: var(--gold-light); font-weight: 600; }
+.rules-tip {
+    background: rgba(212,160,23,0.07);
+    border: 1px solid rgba(212,160,23,0.18);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+
+/* BLOCKED flash */
+#blockedFlash { display: none; position: fixed; inset: 0; z-index: 9000; justify-content: center; align-items: center; pointer-events: none; }
+#blockedFlash.show { display: flex; }
+#blockedFlash span { font-family: 'Cinzel', serif; font-size: clamp(36px, 10vw, 64px); font-weight: 700; letter-spacing: 6px; color: #ff4444; text-shadow: 0 0 20px rgba(255,60,60,0.8), 0 0 50px rgba(255,0,0,0.4), 0 2px 4px rgba(0,0,0,0.9); }
+#blockedFlash.show span { animation: blockedAnim 1s ease-out forwards; }
+@keyframes blockedAnim { 0% { opacity: 0; transform: scale(0.7); } 20% { opacity: 1; transform: scale(1.08); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95); } }
+
+@keyframes cardDeal { from { opacity: 0; transform: translateY(-20px) scale(0.8) rotate(-5deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); } }
+.card-deal { animation: cardDeal 0.3s ease-out both; }
+
+.run-stack-glow {
+    outline-offset: 3px;
+    z-index: 5;
+    position: relative;
+    outline: 2px solid rgba(255,180,0,0.7) !important;
+    box-shadow:
+        0 0 12px 2px rgba(255,200,80,0.45),
+        0 0 24px 4px rgba(255,100,0,0.3) !important;
+    animation: runStackFlicker 1.8s ease-in-out infinite !important;
+}
+.run-stack-glow::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 15%;
+    width: 70%;
+    height: 18px;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(255,140,0,0.55), rgba(255,60,0,0.3), transparent);
+    border-radius: 60% 60% 0 0 / 80% 80% 0 0;
+    animation: flameWisp 1.1s ease-in-out infinite alternate;
+    z-index: 6;
+    opacity: 0.8;
+}
+.run-stack-glow::before { display: none; }
+@keyframes flameWisp {
+    0%   { transform: scaleX(1)    scaleY(1);    opacity: 0.6; }
+    50%  { transform: scaleX(0.88) scaleY(1.15); opacity: 1;   }
+    100% { transform: scaleX(1.08) scaleY(0.9);  opacity: 0.7; }
+}
+@keyframes runStackFlicker {
+    0%   { opacity: 1;    }
+    15%  { opacity: 0.88; }
+    30%  { opacity: 1;    }
+    50%  { opacity: 0.93; }
+    70%  { opacity: 1;    }
+    85%  { opacity: 0.9;  }
+    100% { opacity: 1;    }
+}
+
+#particleCanvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 7000;
+    width: 100%;
+    height: 100%;
+}
+
+/* ============================================================
+   MULTIPLAYER STYLES
+   ============================================================ */
+
+/* Lobby / mode select overlay */
+#mpLobby {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 11000;
+    justify-content: center; align-items: center;
+    flex-direction: column;
+}
+#mpLobby.show { display: flex; }
+.mp-box {
+    background: linear-gradient(160deg, #0e1a0e 0%, #1a2a1a 60%, #1a1a2e 100%);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 36px 44px 32px;
+    width: min(480px, 94vw);
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 0 80px rgba(50,200,50,0.12), 0 0 40px rgba(212,160,23,0.2);
+    text-align: center;
+}
+.mp-box h2 {
+    font-family: 'Cinzel', serif; font-size: 19px; letter-spacing: 4px;
+    color: var(--gold-light); margin: 0 0 6px; text-transform: uppercase;
+}
+.mp-subtitle {
+    font-family: 'Crimson Pro', serif; font-style: italic;
+    font-size: 13px; color: rgba(255,255,255,0.4); margin: 0 0 28px;
+}
+.mp-mode-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px;
+}
+.mp-mode-btn {
+    background: linear-gradient(160deg, rgba(212,160,23,0.12), rgba(212,160,23,0.04));
+    border: 1px solid rgba(212,160,23,0.35); border-radius: 10px;
+    padding: 18px 10px 16px; cursor: pointer; transition: all 0.18s;
+    color: var(--gold-light); font-family: 'Cinzel', serif;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.mp-mode-btn:hover {
+    background: linear-gradient(160deg, rgba(212,160,23,0.28), rgba(212,160,23,0.12));
+    border-color: var(--gold); box-shadow: 0 0 18px rgba(212,160,23,0.2);
+    transform: translateY(-2px);
+}
+.mp-mode-icon { font-size: 28px; }
+.mp-mode-title { font-size: 11px; letter-spacing: 2px; }
+.mp-mode-desc {
+    font-family: 'Crimson Pro', serif; font-size: 11px;
+    color: rgba(255,255,255,0.45); line-height: 1.5; margin-top: 2px;
+    font-style: italic;
+}
+.mp-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent);
+    margin: 20px 0;
+}
+.mp-section-label {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: rgba(212,160,23,0.55); text-transform: uppercase; margin-bottom: 14px;
+}
+.mp-room-row {
+    display: flex; gap: 8px; margin-bottom: 14px;
+}
+.mp-input {
+    flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(212,160,23,0.3);
+    color: #fff; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 2px;
+    padding: 8px 12px; border-radius: 6px; outline: none; text-align: center;
+    text-transform: uppercase;
+}
+.mp-input:focus { border-color: var(--gold); background: rgba(212,160,23,0.08); }
+.mp-input::placeholder { color: rgba(255,255,255,0.2); letter-spacing: 1px; font-size: 11px; text-transform: none; }
+.mp-btn {
+    background: linear-gradient(to bottom, rgba(212,160,23,0.4), rgba(212,160,23,0.2));
+    border: 1px solid rgba(212,160,23,0.5); color: var(--gold-light);
+    font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; padding: 8px 18px; border-radius: 6px; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+}
+.mp-btn:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.6), rgba(212,160,23,0.35)); }
+.mp-btn-wide { width: 100%; padding: 10px; font-size: 12px; }
+.mp-status-line {
+    font-family: 'Crimson Pro', serif; font-size: 13px; color: rgba(212,160,23,0.65);
+    min-height: 20px; margin: 8px 0;
+}
+.mp-error { color: #ff7060; }
+.mp-ok { color: #60d060; }
+
+/* Waiting / turn indicator banner */
+#mpWaitBanner {
+    display: none;
+    position: fixed; top: 0; left: 0; right: 0;
+    background: linear-gradient(90deg, rgba(10,30,10,0.96), rgba(20,20,50,0.96));
+    border-bottom: 1px solid rgba(212,160,23,0.35);
+    z-index: 9500;
+    padding: 8px 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(212,160,23,0.75);
+    text-align: center;
+    animation: bannerPulse 2s ease-in-out infinite alternate;
+}
+#mpWaitBanner.show { display: block; }
+@keyframes bannerPulse {
+    from { color: rgba(212,160,23,0.5); }
+    to   { color: rgba(212,160,23,0.95); }
+}
+
+/* MP turn indicator in score bar */
+.mp-turn-pip {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; margin-right: 5px;
+    vertical-align: middle;
+    transition: background 0.4s;
+}
+.mp-turn-pip.mine  { background: #60d060; box-shadow: 0 0 6px #60d060; }
+.mp-turn-pip.theirs { background: #666; }
+
+/* Connection status dot in top bar */
+#mpConnDot {
+    display: none;
+    width: 9px; height: 9px; border-radius: 50%;
+    margin-left: 6px; flex-shrink: 0;
+    vertical-align: middle;
+    transition: background 0.4s, box-shadow 0.4s;
+}
+#mpConnDot.online  { display: inline-block; background: #60d060; box-shadow: 0 0 6px #60d060; }
+#mpConnDot.polling { display: inline-block; background: #d0a030; box-shadow: 0 0 6px #d0a030; }
+#mpConnDot.offline { display: inline-block; background: #888; }
+
+/* Opponent's hand: face-down cards */
+.opp-hand-row {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.card-back {
+    width: 64px; height: 92px; border-radius: 6px;
+    background: linear-gradient(135deg, #1a1a2e, #2d1b69);
+    border: 1px solid rgba(212,160,23,0.25);
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.45);
+    display: flex; justify-content: center; align-items: center;
+    font-size: 22px; color: rgba(212,160,23,0.4);
+    flex-shrink: 0;
+}
+
+/* MP file-swap panel (offline fallback) */
+#mpFilePanelOuter {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(10,20,10,0.97), rgba(10,20,20,0.9));
+    border-top: 1px solid rgba(212,160,23,0.25);
+    padding: 12px 16px 14px;
+    z-index: 9400;
+    text-align: center;
+}
+#mpFilePanelOuter.show { display: block; }
+.mp-file-title {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: rgba(212,160,23,0.6); text-transform: uppercase; margin-bottom: 10px;
+}
+.mp-file-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* Toast notification */
+#mpToast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,35,20,0.95); border: 1px solid rgba(212,160,23,0.35);
+    border-radius: 8px; padding: 10px 20px;
+    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 1px;
+    color: var(--gold-light);
+    z-index: 12000; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+    white-space: nowrap;
+}
+#mpToast.show { opacity: 1; }
+
+/* Player name badge */
+.mp-name-badge {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px;
+    color: rgba(212,160,23,0.65); padding: 2px 8px;
+    border: 1px solid rgba(212,160,23,0.2); border-radius: 4px;
+    display: inline-block; margin-bottom: 4px;
+}
+
+/* Sync mode pill */
+#mpModePill {
+    display: none;
+    font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 2px 8px; border-radius: 10px;
+    border: 1px solid rgba(212,160,23,0.25);
+    color: rgba(212,160,23,0.55);
+    margin-left: 8px;
+}
+#mpModePill.show { display: inline-block; }
+</style>
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+<!-- MP Wait Banner (shows when it's opponent's turn) -->
+<div id="mpWaitBanner">⏳ &nbsp; WAITING FOR OPPONENT &nbsp; ⏳</div>
+
+<div class="top-bar">
+    <button class="icon-btn" id="muteBtn" onclick="toggleMute()" title="Mute">🔊</button>
+    <h1 class="game-title">Spite &amp; Malice<span id="mpModePill" class="show"></span></h1>
+    <div style="display:flex;align-items:center;gap:4px">
+        <span id="mpConnDot" title="Multiplayer connection"></span>
+        <button class="icon-btn" id="mpBtn" onclick="openMpLobby()" title="Multiplayer" style="display:none">👥</button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
+    </div>
+</div>
+
+<!-- MP Lobby Overlay -->
+<div id="mpLobby">
+    <div class="mp-box">
+        <h2>Multiplayer</h2>
+        <p class="mp-subtitle">Spite &amp; Malice · Two-Player</p>
+
+        <div id="mpModeSelect">
+            <div class="mp-section-label">Choose how to connect</div>
+            <div class="mp-mode-grid">
+                <div class="mp-mode-btn" onclick="mpSelectMode('broadcast')">
+                    <span class="mp-mode-icon">🖥️</span>
+                    <span class="mp-mode-title">Same Device</span>
+                    <span class="mp-mode-desc">Two browser tabs on this machine. Instant, no setup.</span>
+                </div>
+                <div class="mp-mode-btn" onclick="mpSelectMode('storage')">
+                    <span class="mp-mode-icon">🌐</span>
+                    <span class="mp-mode-title">LAN / Online</span>
+                    <span class="mp-mode-desc">Share a Room Code. Works across a local network or online via a shared server.</span>
+                </div>
+                <div class="mp-mode-btn" onclick="mpSelectMode('file')">
+                    <span class="mp-mode-icon">📁</span>
+                    <span class="mp-mode-title">File Swap</span>
+                    <span class="mp-mode-desc">Classic PBEM. Email or share a file between turns — works fully offline.</span>
+                </div>
+                <div class="mp-mode-btn" onclick="mpSelectMode('solo')">
+                    <span class="mp-mode-icon">🤖</span>
+                    <span class="mp-mode-title">vs AI</span>
+                    <span class="mp-mode-desc">Return to single-player mode with the computer opponent.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Broadcast (same device) setup -->
+        <div id="mpBroadcastSetup" style="display:none">
+            <div class="mp-section-label">Same Device — Two Tabs</div>
+            <p style="font-family:'Crimson Pro',serif;font-size:13px;color:rgba(255,255,255,0.55);margin:0 0 16px;line-height:1.6">
+                Open this page in a <strong style="color:rgba(212,160,23,0.8)">second browser tab</strong>. One tab clicks <em>Host</em> — a code appears. The other tab pastes that code and clicks <em>Join</em>.
+            </p>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <input class="mp-input" id="mpBcName" placeholder="Your name (optional)" style="font-size:11px;letter-spacing:1px;text-transform:none">
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:6px">
+                <button class="mp-btn" style="flex:1" onclick="mpBroadcastHost()">🎲 Host Game</button>
+            </div>
+            <div id="mpBcCodeRow" style="display:none;margin-bottom:10px">
+                <div style="font-family:'Cinzel',serif;font-size:10px;color:rgba(212,160,23,0.6);letter-spacing:2px;margin-bottom:6px">CHANNEL CODE — share with your opponent:</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input class="mp-input" id="mpBcCodeDisplay" readonly style="font-size:15px;letter-spacing:4px;color:var(--gold-light);background:rgba(212,160,23,0.12)">
+                    <button class="mp-btn" onclick="mpCopyCode('mpBcCodeDisplay')" title="Copy">📋</button>
+                </div>
+            </div>
+            <div class="mp-divider"></div>
+            <div style="font-family:'Cinzel',serif;font-size:10px;color:rgba(212,160,23,0.5);letter-spacing:2px;margin-bottom:8px">— OR JOIN EXISTING GAME —</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <input class="mp-input" id="mpBcJoinCode" placeholder="PASTE CODE HERE" maxlength="16" style="letter-spacing:3px">
+                <button class="mp-btn" onclick="mpBroadcastJoin()">🔗 Join</button>
+            </div>
+            <div class="mp-status-line" id="mpBcStatus"></div>
+            <div class="mp-divider"></div>
+            <button class="mp-btn mp-btn-wide" onclick="mpBack()" style="opacity:0.7">← Back</button>
+        </div>
+
+        <!-- Storage (LAN/Online) setup -->
+        <div id="mpStorageSetup" style="display:none">
+            <div class="mp-section-label">LAN / Online — Room Code</div>
+            <p style="font-family:'Crimson Pro',serif;font-size:13px;color:rgba(255,255,255,0.55);margin:0 0 16px;line-height:1.6">
+                Uses <strong style="color:rgba(212,160,23,0.8)">localStorage polling</strong> — works between tabs or iframes on the same origin. For true online play, both players open the same hosted URL.
+            </p>
+            <div class="mp-room-row">
+                <input class="mp-input" id="mpRoomCode" placeholder="ROOM CODE" maxlength="8">
+                <button class="mp-btn" onclick="mpGenRoom()">🎲</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input class="mp-input" id="mpStoreName" placeholder="Your name (optional)" style="font-size:11px;letter-spacing:1px;text-transform:none">
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+                <button class="mp-btn" style="flex:1" onclick="mpStorageHost()">🎲 Host</button>
+                <button class="mp-btn" style="flex:1" onclick="mpStorageJoin()">🔗 Join</button>
+            </div>
+            <div class="mp-status-line" id="mpStoreStatus"></div>
+            <div class="mp-divider"></div>
+            <button class="mp-btn mp-btn-wide" onclick="mpBack()" style="opacity:0.7">← Back</button>
+        </div>
+
+        <!-- File swap setup -->
+        <div id="mpFileSetup" style="display:none">
+            <div class="mp-section-label">File Swap — Classic PBEM</div>
+            <p style="font-family:'Crimson Pro',serif;font-size:13px;color:rgba(255,255,255,0.55);margin:0 0 16px;line-height:1.6">
+                No internet needed. One player hosts (deals the game), saves a file, and sends it to the other. Each player loads the file, takes their turn, saves, and passes it back.
+            </p>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input class="mp-input" id="mpFileName" placeholder="Your name (optional)" style="font-size:11px;letter-spacing:1px;text-transform:none">
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <button class="mp-btn" style="flex:1" onclick="mpFileHost()">🎲 I am Player 1 (Host)</button>
+                <button class="mp-btn" style="flex:1" onclick="mpFileLoadClick()">📂 Load Opponent File</button>
+            </div>
+            <input type="file" id="mpFileLoadInput" accept=".spm2" style="display:none" onchange="mpFileLoad(event)">
+            <div class="mp-status-line" id="mpFileStatus"></div>
+            <div class="mp-divider"></div>
+            <button class="mp-btn mp-btn-wide" onclick="mpBack()" style="opacity:0.7">← Back</button>
+        </div>
+
+        <div class="mp-divider" id="mpMainDivider"></div>
+        <button class="mp-btn mp-btn-wide" onclick="closeMpLobby()" style="opacity:0.7">Close</button>
+    </div>
+</div>
+
+<!-- MP File-swap bottom panel (shows during active file-swap game) -->
+<div id="mpFilePanelOuter">
+    <div class="mp-file-title">File Swap Mode · <span id="mpFilePanelTurn"></span></div>
+    <div class="mp-file-btns">
+        <button class="mp-btn" onclick="mpFileSaveAndSend()" id="mpFileSaveBtn" style="display:none">Save &amp; Send to Opponent</button>
+        <button class="mp-btn" onclick="mpFileLoadPanelClick()" id="mpFileLoadBtn" style="display:none">Load Opponent File</button>
+        <button class="mp-btn" onclick="mpFileExitMode()" style="opacity:0.65;font-size:10px">Exit MP</button>
+    </div>
+</div>
+<input type="file" id="mpFilePanelInput" accept=".spm2" style="display:none" onchange="mpFileLoad(event)">
+
+<!-- MP Toast -->
+<div id="mpToast"></div>
+
+<div class="score-bar">
+    <div class="score-item"><span class="score-value" id="scoreDisplay">0</span><span id="scoreLabel">Score</span></div>
+    <div class="score-item" id="oppScoreItem" style="display:none"><span class="score-value" id="oppScoreDisplay">0</span><span id="oppScoreLabel">Opp</span></div>
+    <div class="score-item"><span class="score-value" id="highScoreDisplay">0</span>Best</div>
+    <div class="score-item"><span class="score-value" id="bestRunDisplay">×1</span>Best Run</div>
+</div>
+
+<div id="aiThinking">AI is thinking…</div>
+<div id="statusMsg">Your turn — drag or click cards to play</div>
+
+<div class="labeled-row">
+    <span class="side-label">AI ▽</span>
+    <div class="cards-row" id="aiDiscard"></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="labeled-row">
+    <span class="side-label">Center ▶</span>
+    <div class="cards-row" id="center"></div>
+</div>
+
+<div class="divider"></div>
+
+<div id="goalContainer">
+    <div class="goal-col"><span class="goal-col-label">AI Goal</span><div id="aiGoalArea"></div></div>
+    <div class="goal-col"><span class="goal-col-label">Deck</span><div id="drawDeckArea"></div></div>
+    <div class="goal-col"><span class="goal-col-label bright">🤚 Goal</span><div id="playerGoalArea"></div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="labeled-row">
+    <span class="side-label">Your ▽</span>
+    <div class="cards-row" id="playerDiscard"></div>
+</div>
+
+<div class="labeled-row">
+    <span class="side-label">Hand</span>
+    <div class="cards-row" id="hand"></div>
+</div>
+
+<div id="actionButtons"></div>
+
+<div id="blockedFlash"><span>BLOCKED!!</span></div>
+<!-- floating run word — positioned dynamically over center deck area -->
+<div id="runWord"></div>
+<div id="dragGhost" class="card"></div>
+
+<div id="winOverlay">
+    <div class="win-box">
+        <h2 id="winText">YOU WIN!</h2>
+        <div class="win-score" id="winScore"></div>
+        <p id="winSub">Congratulations!</p>
+        <button onclick="startNewGame()">Play Again</button>
+    </div>
+</div>
+
+<div id="settingsOverlay">
+    <div class="settings-box">
+        <h2>Settings</h2>
+        <div class="settings-row">Sound <button class="toggle-btn on" id="soundToggle" onclick="toggleMute()">On</button></div>
+        <div class="settings-row">Decks &amp; Goal <button class="toggle-btn" id="deckToggle" onclick="toggleTripleModeUI()">2 Decks</button></div>
+        <div class="settings-row">Wild Card
+            <select class="wild-select" id="wildSelect">
+                <option value="joker">🤪 Joker</option>
+                <option value="A">A — Ace</option>
+                <option value="2">2 — Two</option>
+                <option value="3">3 — Three</option>
+                <option value="4">4 — Four</option>
+                <option value="5">5 — Five</option>
+                <option value="6">6 — Six</option>
+                <option value="7">7 — Seven</option>
+                <option value="8">8 — Eight</option>
+                <option value="9">9 — Nine</option>
+                <option value="10">10 — Ten</option>
+                <option value="J">J — Jack</option>
+                <option value="Q">Q — Queen</option>
+                <option value="K">K — King</option>
+            </select>
+        </div>
+        <div id="settingsChangedNote" style="display:none;font-family:'Crimson Pro',serif;font-size:11px;color:#f0a040;text-align:center;margin:0 0 10px;padding:6px 8px;border:1px solid rgba(240,160,64,0.35);border-radius:4px;background:rgba(240,160,64,0.08)">⚠ Deck/Wild changes need a new game</div>
+        <button id="applySettingsBtn" onclick="applySettings()" style="width:100%;margin-bottom:8px;background:linear-gradient(to bottom,rgba(212,160,23,0.45),rgba(212,160,23,0.25));font-size:12px;padding:8px">▶ Apply &amp; New Game</button>
+        <button onclick="restartGame()" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;opacity:0.85">🔄 Restart Current Game</button>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button onclick="saveGameToFile()" style="flex:1;font-size:11px;padding:6px;opacity:0.85">💾 Save Game</button>
+            <button onclick="loadGameFromFile()" style="flex:1;font-size:11px;padding:6px;opacity:0.85">📂 Load Game</button>
+        </div>
+        <input type="file" id="loadFileInput" accept=".spm" style="display:none" onchange="handleLoadFile(event)">
+        <div class="settings-divider"></div>        <div class="hs-title"><span id="hsModeLabel">2-Deck Scores</span></div>
+        <ul class="hs-list" id="hsList"></ul>
+        <div class="scoring-note">Center play +1 &nbsp;·&nbsp; Block AI +55<br>Goal play +70 &nbsp;·&nbsp; Center clear +45 &nbsp;·&nbsp; Win +300<br>Discard clear: +10 (2) · +20 (3) · +25 (4+)<br>Run bonus: 2nd card on a stack starts the run<br>×level every 3 cards · Block AI: +1 level<br>Discard clear: +1 or +2 levels<br>Multiplier: 1→2→4→8→16→32→64→128×</div>
+        <button onclick="clearHighScores()" style="width:100%;margin-bottom:10px;font-size:10px;padding:5px;opacity:0.7">Clear Scores</button>
+        <button onclick="openRules()" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;opacity:0.85">📖 How to Play</button>
+        <button onclick="closeSettings();openMpLobby();" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;background:linear-gradient(to bottom,rgba(50,180,50,0.2),rgba(50,180,50,0.08));border-color:rgba(50,180,50,0.4)">👥 Multiplayer</button>
+        <button onclick="closeSettings()" style="width:100%">Close</button>
+    </div>
+</div>
+
+<div id="rulesOverlay">
+    <div class="rules-box">
+        <h2>How to Play</h2>
+        <p class="rules-subtitle">Spite &amp; Malice</p>
+
+        <div class="rules-section">
+            <div class="rules-section-title">The Goal</div>
+            <div class="rules-item">
+                <span class="rules-icon">🏆</span>
+                <span>Empty your <strong>Goal stack</strong> before your opponent does. The top card of your Goal can be played to the <strong>Centre ▶</strong> whenever it fits — that's your main path to winning.</span>
+            </div>
+        </div>
+
+        <div class="rules-section">
+            <div class="rules-section-title">Centre ▶ Stacks</div>
+            <div class="rules-item">
+                <span class="rules-icon">⬆️</span>
+                <span>Built <strong>low to high</strong>, one rank at a time. Suit doesn't matter.</span>
+            </div>
+            <div class="rules-item">
+                <span class="rules-icon">✅</span>
+                <span>When a stack reaches its highest card it is <strong>cleared and shuffled</strong> back into the draw deck.</span>
+            </div>
+        </div>
+
+        <div class="rules-section">
+            <div class="rules-section-title">Wilds</div>
+            <div class="rules-item">
+                <span class="rules-icon">🃏</span>
+                <span>A wild can stand in for <strong>any card</strong> on a <strong>Centre ▶</strong> stack.</span>
+            </div>
+            <div class="rules-item">
+                <span class="rules-icon">⚠️</span>
+                <span>You <strong>cannot end your turn</strong> with a wild on top of a <strong>Centre ▶</strong> stack — cover it with a real card first.</span>
+            </div>
+        </div>
+
+        <div class="rules-section">
+            <div class="rules-section-title">Your Turn</div>
+            <div class="rules-item">
+                <span class="rules-icon">🤚</span>
+                <span>Play cards from your <strong>hand</strong>, your <strong>Goal stack</strong>, or the top card of any of your <strong>Discard ▽</strong> stacks.</span>
+            </div>
+            <div class="rules-item">
+                <span class="rules-icon">🔒</span>
+                <span>Only the <strong>top card</strong> of each <strong>Discard ▽</strong> stack can be played.</span>
+            </div>
+            <div class="rules-item">
+                <span class="rules-icon">▽</span>
+                <span>Your turn <strong>must end</strong> by discarding one card from your hand to one of your <strong>Discard ▽</strong> stacks — no other way to end it.</span>
+            </div>
+        </div>
+
+        <div class="rules-divider"></div>
+        <div class="rules-tip">Keep your <strong style="color:rgba(212,160,23,0.7)">Discard ▽</strong> stacks tidy — burying a card you need means waiting until it's back on top.</div>
+
+        <div style="margin-top:20px">
+            <button onclick="closeRules()" style="width:100%">Got It</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  SOUND ENGINE
+// ============================================================
+let audioCtx = null, muted = false, tripleMode = false;
+let _audioReady = false; // true once the context has been resumed after a user gesture
+
+function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+// Resume a suspended AudioContext (required by browsers before any user gesture).
+// Call this at the top of every user-initiated sound so the first real interaction
+// unlocks audio — but don't attempt to play anything until it's actually running.
+function ensureAudioReady(then) {
+    if (muted) return;
+    const ctx = getCtx();
+    if (ctx.state === 'running') {
+        then(ctx);
+    } else if (ctx.state === 'suspended') {
+        ctx.resume().then(() => then(ctx)).catch(() => {});
+    }
+    // 'closed' state: do nothing
+}
+
+function playTone(freq, type, duration, vol = 0.3, delay = 0) {
+    if (muted) return;
+    ensureAudioReady(ctx => {
+        try {
+            const now = ctx.currentTime + delay;
+            const osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = type; osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            osc.start(now); osc.stop(now + duration + 0.05);
+        } catch(e) {}
+    });
+}
+
+function pageFlip(vol = 0.18) {
+    if (muted) return;
+    ensureAudioReady(ctx => {
+        try {
+            const now = ctx.currentTime, dur = 0.055;
+            const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource(); src.buffer = buf;
+            const hp = ctx.createBiquadFilter(); hp.type = 'highpass';
+            hp.frequency.setValueAtTime(8000, now);
+            hp.frequency.exponentialRampToValueAtTime(1200, now + dur);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+            src.connect(hp); hp.connect(gain); gain.connect(ctx.destination);
+            src.start(now); src.stop(now + dur + 0.01);
+        } catch(e) {}
+    });
+}
+
+const playCardSlide  = () => pageFlip(0.18);
+const playCardPlace  = () => pageFlip(0.22);
+const playSuccess    = () => [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.18,0.25,i*0.08));
+const playWin        = () => [523,659,784,1047,1319,1047,1319,2093].forEach((f,i) => playTone(f,'triangle',0.3,0.3,i*0.1));
+const playAiTurn     = () => playTone(350,'sine',0.1,0.1);
+const playError      = () => pageFlip(0.12);
+// playDeal fires on page load before any user gesture — only play if the context is already running
+const playDeal       = () => { if (audioCtx && audioCtx.state === 'running') { for (let i=0;i<5;i++) setTimeout(()=>pageFlip(0.15),i*120); } };
+const playGoalPlay   = () => { playTone(440,'sine',0.18,0.22); playTone(659,'sine',0.22,0.18,0.1); };
+const playDiscardClear = () => { pageFlip(0.25); playTone(880,'triangle',0.12,0.15,0.06); playTone(1109,'sine',0.18,0.12,0.14); };
+
+function playBlock() {
+    playTone(146.8, 'sawtooth', 0.5, 0.18);
+    playTone(164.8, 'triangle', 0.45, 0.14, 0.03);
+    playTone(220,   'triangle', 0.5, 0.16, 0.06);
+    playTone(261.6, 'sawtooth', 0.4, 0.12, 0.09);
+    playTone(293.6, 'sine',     0.35, 0.1, 0.25);
+}
+
+function toggleMute() {
+    muted = !muted;
+    document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+    const st = document.getElementById("soundToggle");
+    st.textContent = muted ? "Off" : "On";
+    st.classList.toggle("on", !muted);
+}
+
+// pendingSettings holds UI selections before Apply is pressed
+let pendingTriple = false;
+let pendingWild   = "joker";
+
+function toggleTripleModeUI() {
+    pendingTriple = !pendingTriple;
+    const btn = document.getElementById("deckToggle");
+    btn.textContent = pendingTriple ? "3 Decks" : "2 Decks";
+    btn.classList.toggle("on", pendingTriple);
+    checkSettingsChanged();
+}
+
+function checkSettingsChanged() {
+    const changed = pendingTriple !== tripleMode || pendingWild !== wildCardSetting;
+    const note = document.getElementById("settingsChangedNote");
+    const applyBtn = document.getElementById("applySettingsBtn");
+    if (note) note.style.display = changed ? "block" : "none";
+    if (applyBtn) applyBtn.style.opacity = changed ? "1" : "0.5";
+}
+
+function applySettings() {
+    const changed = pendingTriple !== tripleMode || pendingWild !== wildCardSetting;
+    if (changed) {
+        if (!confirm("Apply settings and start a new game now?")) return;
+        tripleMode      = pendingTriple;
+        wildCardSetting = pendingWild;
+        loadBestScore(); loadBestRun();
+        closeSettings();
+        deal();
+    } else {
+        closeSettings();
+    }
+}
+
+// ============================================================
+//  SCORING & HIGH SCORES
+// ============================================================
+const SCORE = { CENTER_CLEAR:45, DISCARD_CLEAR:25, GOAL_PLAY:70, WIN:300 };
+let score = 0;
+let flashQueue = [], flashTimer = null;
+
+function addScore(pts, originEl, isRun = false) {
+    score += pts;
+    document.getElementById("scoreDisplay").textContent = score;
+    if (originEl) {
+        const r = originEl.getBoundingClientRect();
+        flashQueue.push({ pts, x: r.left + r.width/2 - 20, y: r.top - 10, isRun });
+        if (!flashTimer) drainFlashQueue();
+        // Spawn score particles flying to the score display
+        const particleCount = isRun ? Math.min(8, Math.ceil(pts / 5)) : Math.min(4, Math.ceil(pts / 2));
+        spawnScoreParticles(originEl, particleCount);
+    }
+}
+
+function drainFlashQueue() {
+    if (!flashQueue.length) { flashTimer = null; return; }
+    const { pts, x, y, isRun } = flashQueue.shift();
+    const el = document.createElement("div");
+    el.className = "score-flash" + (isRun ? " run-flash" : "");
+    el.textContent = "+" + pts;
+    el.style.left = x + "px";
+    el.style.top  = y + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+    flashTimer = setTimeout(drainFlashQueue, 300);
+}
+
+const wildKey    = () => wildCardSetting === "joker" ? "J" : wildCardSetting;
+const bestRunKey = () => `smBestRun${tripleMode ? 3 : 2}_${wildKey()}`;
+
+function loadBestRun() {
+    const v = parseInt(localStorage.getItem(bestRunKey())) || 1;
+    document.getElementById("bestRunDisplay").textContent = "×" + v;
+}
+
+function trackBestRun(multVal) {
+    const stored = parseInt(localStorage.getItem(bestRunKey())) || 1;
+    if (multVal > stored) {
+        localStorage.setItem(bestRunKey(), multVal);
+        document.getElementById("bestRunDisplay").textContent = "×" + multVal;
+    }
+}
+
+const hsKey = () => `smHighScores${tripleMode ? 3 : 2}_${wildKey()}`;
+const getHighScores = () => { try { return JSON.parse(localStorage.getItem(hsKey())) || []; } catch(e) { return []; } };
+
+function saveHighScore() {
+    const hs = getHighScores();
+    hs.push({ score, date: new Date().toLocaleDateString() });
+    hs.sort((a,b) => b.score - a.score);
+    hs.splice(10);
+    localStorage.setItem(hsKey(), JSON.stringify(hs));
+    document.getElementById("highScoreDisplay").textContent = (hs[0] && hs[0].score) ? hs[0].score : 0;
+}
+
+function loadBestScore() {
+    const hs = getHighScores();
+    document.getElementById("highScoreDisplay").textContent = (hs[0] && hs[0].score) ? hs[0].score : 0;
+}
+
+function clearHighScores() {
+    if (!confirm("Clear all high scores?")) return;
+    localStorage.removeItem(hsKey());
+    localStorage.removeItem(bestRunKey());
+    document.getElementById("highScoreDisplay").textContent = 0;
+    document.getElementById("bestRunDisplay").textContent = "×1";
+    renderHsList();
+}
+
+function renderHsList() {
+    const list = document.getElementById("hsList");
+    const hs = getHighScores();
+    const wildLabel = wildCardSetting === "joker" ? "Joker Wild" : wildCardSetting + "s Wild";
+    document.getElementById("hsModeLabel").textContent = `${tripleMode ? "3" : "2"}-Deck · ${wildLabel}`;
+    if (!hs.length) { list.innerHTML = `<p class='hs-empty'>No scores yet — win a game!</p>`; return; }
+    list.innerHTML = hs.map((h,i) => `<li><span>#${i+1}&nbsp; ${h.date}</span><span>${h.score}</span></li>`).join("");
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+
+const openSettings = () => {
+    renderHsList();
+    pendingTriple = tripleMode;
+    pendingWild   = wildCardSetting;
+    const btn = document.getElementById("deckToggle");
+    btn.textContent = tripleMode ? "3 Decks" : "2 Decks";
+    btn.classList.toggle("on", tripleMode);
+    const sel = document.getElementById("wildSelect");
+    if (sel) {
+        sel.value = wildCardSetting;
+        if (!sel._wired) {
+            sel._wired = true;
+            sel.addEventListener("change", () => { pendingWild = sel.value; checkSettingsChanged(); });
+        }
+    }
+    document.getElementById("settingsChangedNote").style.display = "none";
+    document.getElementById("applySettingsBtn").style.opacity = "0.5";
+    document.getElementById("settingsOverlay").classList.add("show");
+};
+const closeSettings = () => document.getElementById("settingsOverlay").classList.remove("show");
+const openRules = () => { closeSettings(); document.getElementById("rulesOverlay").classList.add("show"); };
+const closeRules = () => { document.getElementById("rulesOverlay").classList.remove("show"); openSettings(); };
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+const suits  = ["♠","♥","♦","♣"];
+const values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const WILD   = "🤪";
+
+// Wild card setting: "joker" = use jokers (default), or any value from `values` to use that card as wild
+let wildCardSetting = "joker";
+const PIP_LAYOUTS = {
+    "A":[[1]],"2":[[1],[1]],"3":[[1],[1],[1]],"4":[[2],[2]],"5":[[2],[1],[2]],
+    "6":[[2],[2],[2]],"7":[[2],[1],[2],[2]],"8":[[2],[2],[2],[2]],
+    "9":[[2],[1],[2],[2],[2]],"10":[[2],[2],[1],[2],[2]],"J":null,"Q":null,"K":null
+};
+
+// Run tracking: per-stack card count this turn, total multiplier
+// runStackCounts[i] = number of cards played to center[i] this turn
+// currentRunStackIdx = which stack the run word currently hovers above (-1 = none)
+let runStackCounts, runMultiplier, currentRunStackIdx;
+
+let deck = [], recyclePile = [];
+let center, playerGoal, aiGoal, playerHand, aiHand, playerDiscard, aiDiscard;
+let maxDiscardDepth;
+let selectedCard = null, selectedSource = null, playerTurn = true;
+let prevHandSnapshot = [];
+let expandedPlayerDiscards = new Set(), expandedAiDiscards = new Set();
+let gameOver = false;
+let dragCard = null, dragSource = null, currentDropTarget = null;
+let dragOffsetX = 0, dragOffsetY = 0;
+let pendingParticleSpawn = null;
+const dragGhostEl = document.getElementById("dragGhost");
+
+// ============================================================
+//  RUN SYSTEM
+// ============================================================
+// Multiplier ladder: 1,2,4,8,16,32,64,128 (level 1..8)
+const getRunMultiplier = level => Math.pow(2, Math.max(0, level - 1));
+
+// The run word element — positioned above the center deck area
+let runWordEl = null;
+let runWordFadeTimer = null;
+
+function resetRunTracking() {
+    runStackCounts = [0, 0, 0, 0, 0];
+    runMultiplier = 0;
+    currentRunStackIdx = -1;
+    hideRunWord();
+}
+
+function hideRunWord() {
+    if (!runWordEl) return;
+    runWordEl.classList.remove("active", "settle");
+    clearRunStackGlows();
+}
+
+// Position the floating word above the currently running center stack
+function positionRunWord() {
+    if (!runWordEl) return;
+    let targetEl = null;
+    // Try to find the specific running stack card element
+    if (currentRunStackIdx >= 0) {
+        targetEl = getCenterEl(currentRunStackIdx);
+    }
+    // Fallback: center row
+    if (!targetEl) {
+        targetEl = document.getElementById("center");
+    }
+    if (!targetEl) return;
+    const r = targetEl.getBoundingClientRect();
+    const risePerLevel = 18;
+    const yOffset = 20 + runMultiplier * risePerLevel;
+    const cx = r.left + r.width / 2;
+    const cy = r.top; // fixed positioning = viewport coords, no scrollY needed
+    runWordEl.style.left = cx + "px";
+    runWordEl.style.top  = (cy - yOffset) + "px";
+    runWordEl.style.transform = "translateX(-50%)"; // horizontally centre the text
+}
+
+// Taunt labels that escalate with multiplier level
+const RUN_LABELS = [
+    "RUN",          // ×1
+    "RUN",          // ×2
+    "HOT",          // ×4
+    "BLAZING",      // ×8
+    "UNSTOPPABLE",  // ×16
+    "INFERNO",      // ×32
+    "LEGENDARY",    // ×64
+    "GODLIKE",      // ×128
+    "IMPOSSIBLE",   // ×256
+    "ARE YOU EVEN REAL", // ×512+
+];
+
+// Called each time a new run level is triggered
+function updateRunWord() {
+    if (!runWordEl) return;
+    const level = runMultiplier; // 1..n
+    const mult  = getRunMultiplier(level);
+
+    // Track best run this session and all time
+    trackBestRun(mult);
+
+    // Opacity: ghostly at first, full by level 4
+    const opacity = Math.min(0.22 + level * 0.13, 1.0);
+
+    // Font size: grows quickly but caps at 44px — legibility over drama
+    const fontSize = Math.min(12 + level * 6, 44);
+
+    // Colour: deep ember orange → bright fire white-gold
+    const r = Math.min(180 + level * 12, 255);
+    const g = Math.min(55  + level * 18, 220);
+    const b = Math.max(20  - level * 2,  0);
+    const color = `rgb(${r},${g},${b})`;
+
+    // Glow
+    const glowR1 = clamp(200 + level * 8, 200, 255);
+    const glowG1 = clamp(80  + level * 15, 80, 200);
+    const glowSpread1 = 6 + level * 6;
+    const glowSpread2 = 10 + level * 12;
+    const glow = `0 0 ${glowSpread1}px rgba(${glowR1},${glowG1},0,${Math.min(0.2 + level*0.1, 0.9)}), `
+               + `0 0 ${glowSpread2}px rgba(255,100,0,${Math.min(0.1 + level*0.08, 0.7)})`;
+
+    // Wobble speed: dreamlike → urgent
+    const wobbleDur = Math.max(2.8 - level * 0.2, 1.0);
+    const spacing = Math.max(6 - level * 0.4, 1);
+
+    runWordEl.style.fontSize      = fontSize + "px";
+    runWordEl.style.opacity       = opacity;
+    runWordEl.style.color         = color;
+    runWordEl.style.textShadow    = glow;
+    runWordEl.style.letterSpacing = spacing + "px";
+    runWordEl.style.animationDuration = wobbleDur + "s";
+
+    const label = RUN_LABELS[Math.min(level - 1, RUN_LABELS.length - 1)];
+    const multStr = mult >= 2 ? ` ×${mult}` : "";
+    runWordEl.textContent = label + multStr;
+
+    positionRunWord();
+    runWordEl.classList.add("active");
+    runWordEl.classList.remove("settle");
+}
+
+function recordCardPlayedToStack(stackIdx) {
+    runStackCounts[stackIdx]++;
+    const count = runStackCounts[stackIdx];
+    // Total cards played to any center stack this turn
+    const totalPlayed = runStackCounts.reduce((s, c) => s + c, 0);
+
+    // Run activates on the 2nd card played to any stack this turn
+    if (totalPlayed >= 2) {
+        if (currentRunStackIdx !== stackIdx) {
+            updateRunStackGlow(currentRunStackIdx, false, 0);
+            currentRunStackIdx = stackIdx;
+        }
+    }
+
+    // Multiplier level based on TOTAL cards played across all stacks this turn
+    // 2nd card = level 1, every 3 more = +1 level (so 2,5,8,11…)
+    const newLevel = totalPlayed >= 2 ? Math.floor((totalPlayed - 2) / 3) + 1 : 0;
+    const leveledUp = newLevel > runMultiplier;
+    if (leveledUp) {
+        runMultiplier = newLevel;
+        updateRunWord();
+        playRunNote(runMultiplier);
+    } else if (totalPlayed >= 2) {
+        if (runMultiplier > 0) {
+            updateRunWord();
+        } else {
+            positionRunWord();
+            showEarlyRunWord(totalPlayed);
+        }
+    }
+
+    // Spawn ambient orbit particles around the active center card
+    // Queue them — DOM hasn't been rebuilt by render() yet, so defer
+    if (totalPlayed >= 2) {
+        const depth = Math.min((totalPlayed - 2) / 12, 1);
+        updateRunStackGlow(stackIdx, true, depth);
+        pendingParticleSpawn = { stackIdx, count: leveledUp ? 6 : 2 };
+    }
+}
+
+// Show a dim run indicator before the multiplier kicks in (cards 2-4)
+function showEarlyRunWord(count) {
+    if (!runWordEl || count < 2) return;
+    const frac = (count - 2) / 3; // 0 at card 2, 1 at card 5
+    runWordEl.style.fontSize = (12 + frac * 8) + "px";
+    runWordEl.style.opacity = (0.12 + frac * 0.15).toString();
+    runWordEl.style.color = "rgb(200,120,20)";
+    runWordEl.style.textShadow = "none";
+    runWordEl.style.letterSpacing = "6px";
+    runWordEl.style.animationDuration = "2.8s";
+    runWordEl.textContent = "RUN";
+    positionRunWord();
+    runWordEl.classList.add("active");
+    runWordEl.classList.remove("settle");
+}
+
+function updateRunStackGlow(stackIdx, on, depth) {
+    if (stackIdx < 0) return;
+    const el = getCenterEl(stackIdx);
+    if (!el) return;
+    if (on) {
+        el.style.setProperty('--run-depth', (depth || 0).toFixed(3));
+        el.classList.add("run-stack-glow");
+    } else {
+        el.classList.remove("run-stack-glow");
+        el.style.removeProperty('--run-depth');
+    }
+}
+
+function clearRunStackGlows() {
+    document.querySelectorAll(".run-stack-glow").forEach(el => el.classList.remove("run-stack-glow"));
+}
+
+// Called by special moves (block AI, discard clear) to jump the run multiplier
+function boostRunMultiplier(levels, label) {
+    if (currentRunStackIdx < 0 || runStackCounts[currentRunStackIdx] < 2) return; // no active run
+    runMultiplier += levels;
+    updateRunWord();
+    playRunNote(runMultiplier);
+    // Flash a special boost label near the run word
+    if (runWordEl) {
+        const r = runWordEl.getBoundingClientRect();
+        const tag = document.createElement("div");
+        tag.className = "score-flash run-flash";
+        tag.textContent = label;
+        tag.style.left = (r.left + r.width / 2 - 30) + "px";
+        tag.style.top  = (r.top - 28) + "px";
+        tag.style.fontSize = "14px";
+        document.body.appendChild(tag);
+        setTimeout(() => tag.remove(), 1200);
+    }
+}
+
+// Music: starts in deep bass (55 Hz = A1), walks up in minor thirds
+// so even run level 13 stays musical and doesn't screech
+// Pattern: A1 → C2 → Eb2 → F#2 → A2 → C3 → Eb3 → F#3 → A3 → C4 → Eb4 → F#4 → A4
+const RUN_NOTE_FREQS = [
+    55.0,   // A1  — deep sub-bass rumble
+    65.4,   // C2
+    77.8,   // Eb2
+    92.5,   // F#2
+    110.0,  // A2  — bass guitar territory
+    130.8,  // C3
+    155.6,  // Eb3
+    185.0,  // F#3
+    220.0,  // A3  — cello
+    261.6,  // C4  — middle register
+    311.1,  // Eb4
+    370.0,  // F#4
+    440.0,  // A4  — bright top note for level 13
+];
+
+function playRunNote(level) {
+    if (muted) return;
+    const idx   = Math.min(level - 1, RUN_NOTE_FREQS.length - 1);
+    const freq  = RUN_NOTE_FREQS[idx];
+    const isLow = level <= 3;
+
+    // Volume scales up gently; bass notes get a longer decay
+    const vol  = Math.min(0.12 + level * 0.04, 0.55);
+    const dur  = isLow ? 0.9 : 0.5;
+
+    // Low levels: sine + sub rumble; mid: triangle chord; high: bright chord
+    if (isLow) {
+        playTone(freq,       'sine',     dur,      vol,       0);
+        playTone(freq * 1.5, 'sine',     dur * 0.6, vol * 0.4, 0.06); // fifth above
+    } else if (level <= 6) {
+        playTone(freq,       'triangle', dur,      vol,       0);
+        playTone(freq * 1.5, 'triangle', dur * 0.7, vol * 0.5, 0.05);
+        playTone(freq * 2,   'sine',     dur * 0.5, vol * 0.3, 0.1);
+    } else {
+        // High drama: full triad + shimmer
+        playTone(freq,       'triangle', dur,      vol,       0);
+        playTone(freq * 1.2, 'sine',     dur * 0.8, vol * 0.6, 0.04);
+        playTone(freq * 1.5, 'triangle', dur * 0.7, vol * 0.5, 0.08);
+        playTone(freq * 2,   'sine',     dur * 0.4, vol * 0.35, 0.12);
+    }
+}
+
+// Called at end of player turn — award accumulated run bonus, then dissolve
+function settleRunBonus() {
+    if (runMultiplier <= 0) return;
+    const multVal = getRunMultiplier(runMultiplier);
+    const basePts = runStackCounts.reduce((sum, c) => sum + c, 0);
+    const bonus   = basePts * multVal;
+
+    // Settle animation — bright flash then float away
+    if (runWordEl) {
+        runWordEl.style.opacity = "1";
+        runWordEl.classList.add("settle");
+        setTimeout(() => { runWordEl.classList.remove("active", "settle"); runWordEl.style.filter = ""; clearRunStackGlows(); }, 800);
+    }
+
+    // Burst of score particles from the run stack toward the score
+    const activeEl = currentRunStackIdx >= 0 ? getCenterEl(currentRunStackIdx) : null;
+    if (activeEl) spawnScoreParticles(activeEl, Math.min(12, multVal + 3));
+
+    addScore(bonus, document.getElementById("scoreDisplay"), true);
+}
+
+const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
+
+// ============================================================
+//  UTILITY
+// ============================================================
+const shuffle = a => { for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } };
+
+function tryRefillDeck() {
+    if (deck.length===0 && recyclePile.length>0) { deck.push(...recyclePile); shuffle(deck); recyclePile=[]; }
+}
+
+function clearCenterStack(i) {
+    recyclePile.push(...center[i].map(c => c.startsWith(WILD) ? WILD : c));
+    center[i] = []; tryRefillDeck();
+}
+
+function cardValue(card) {
+    if (card.startsWith(WILD)) {
+        const m = card.match(/🤪\((.+)\)/);
+        if (m) { const idx = values.indexOf(m[1].toUpperCase()); return idx >= 0 ? idx + 1 : 0; }
+        return 0;
+    }
+    for (let i = values.length-1; i >= 0; i--) if (card.startsWith(values[i])) return i + 1;
+    return 0;
+}
+
+function parseCard(card) {
+    if (card.startsWith(WILD)) { const m = card.match(/🤪\((.+)\)/); return { val: m ? m[1]+"*" : WILD, suit: "★" }; }
+    for (let i = values.length-1; i >= 0; i--) if (card.startsWith(values[i])) return { val: values[i], suit: card.slice(values[i].length) };
+    return { val: card, suit: "" };
+}
+
+const suitColor = s => (s==="♥"||s==="♦") ? "red" : s==="★" ? "purple" : "black";
+const suitHtml = (suit, cls) => (suit==="♣"||suit==="★") ? `<span class="${cls}">${suit}</span>` : `<span class="${cls} suit-large">${suit}</span>`;
+
+// ============================================================
+//  CARD RENDERING
+// ============================================================
+function renderCardFace(el, card, listHtml) {
+    el.innerHTML = "";
+    Object.assign(el.style, { position:"relative", padding:"0", overflow:"hidden", display:"block" });
+
+    if (card.startsWith(WILD)) {
+        const m = card.match(/🤪\((.+)\)/);
+        // For custom wilds (non-joker setting), show the card's value with a ★ indicator
+        const wildEmoji = wildCardSetting !== "joker" ? "★" : "🤪";
+        Object.assign(el.style, { display:"flex", flexDirection:"column", justifyContent:listHtml?"flex-start":"center", alignItems:"center", fontSize:m?"13px":"22px", color:"purple", paddingTop: listHtml ? "6px" : "0", paddingBottom: listHtml ? "3px" : "0", boxSizing:"border-box" });
+        if (m) {
+            const face = document.createElement("div");
+            face.innerHTML = `<span style='font-size:18px'>${wildEmoji}</span><span style='font-size:11px;font-weight:bold;color:purple'>${m[1]}</span>`;
+            face.style.cssText = "display:flex;flex-direction:column;align-items:center";
+            el.appendChild(face);
+        } else {
+            const face = document.createElement("div");
+            if (wildCardSetting !== "joker") {
+                face.innerHTML = `<span style='font-size:14px'>★</span><span style='font-size:9px;font-weight:bold;color:purple;letter-spacing:0'>${wildCardSetting}</span><span style='font-size:8px;color:#888'>WILD</span>`;
+                face.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:1px";
+            } else {
+                face.textContent = "🤪";
+            }
+            el.appendChild(face);
+        }
+        if (listHtml) {
+            const ls = document.createElement("span");
+            ls.style.cssText = "font-size:9px;line-height:1.5;word-break:break-word;text-align:center;padding:2px 3px;display:flex;flex-wrap:wrap;justify-content:center;gap:1px 3px";
+            ls.innerHTML = listHtml;
+            el.appendChild(ls);
+        }
+        return;
+    }
+
+    const { val, suit } = parseCard(card);
+    const cc = suitColor(suit) === "red" ? "red" : "black";
+
+    const makeCorner = (extra = "") => {
+        const c = document.createElement("div"); c.className = `card-corner ${cc}`;
+        if (extra) c.style.cssText = extra;
+        c.innerHTML = `<span>${val}</span>${suitHtml(suit, cc)}`; return c;
+    };
+    el.appendChild(makeCorner());
+    el.appendChild(makeCorner("top:auto;left:auto;bottom:2px;right:3px;transform:rotate(180deg)"));
+
+    const layout = PIP_LAYOUTS[val];
+    if (listHtml) {
+        Object.assign(el.style, { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", paddingTop:"20px", paddingBottom:"3px", boxSizing:"border-box" });
+        const ss = document.createElement("span"); ss.style.fontSize = "17px"; ss.style.lineHeight = "1";
+        ss.innerHTML = suitHtml(suit, cc);
+        const ls = document.createElement("span");
+        ls.style.cssText = "font-size:9px;line-height:1.5;word-break:break-word;text-align:center;padding:2px 3px;display:flex;flex-wrap:wrap;justify-content:center;gap:1px 3px";
+        ls.innerHTML = listHtml;
+        el.appendChild(ss); el.appendChild(ls);
+    } else if (layout) {
+        const pips = document.createElement("div"); pips.className = "card-pips";
+        layout.forEach(row => {
+            const rd = document.createElement("div"); rd.className = "pip-row";
+            for (let p = 0; p < row[0]; p++) { const pip = document.createElement("span"); pip.innerHTML = suitHtml(suit, cc); rd.appendChild(pip); }
+            pips.appendChild(rd);
+        });
+        el.appendChild(pips);
+    } else {
+        // Use absolute centering so it works regardless of parent display type (flex or block)
+        Object.assign(el.style, { position:"relative" });
+        const center = document.createElement("div");
+        center.style.cssText = "position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:center;align-items:center;";
+        const big = document.createElement("span"); big.className = `card-center-label ${cc}`; big.textContent = val;
+        const bs = document.createElement("span"); bs.innerHTML = `<span class="${cc}">${suit}</span>`; bs.style.fontSize = "15px";
+        center.appendChild(big); center.appendChild(bs);
+        el.appendChild(center);
+    }
+}
+
+// ============================================================
+//  DECK & DEAL
+// ============================================================
+function deal() {
+    const deckCount = tripleMode ? 3 : 2;
+    const goalSize  = tripleMode ? 26 : 13;
+    deck = [];
+    for (let d = 0; d < deckCount; d++) {
+        if (wildCardSetting === "joker") {
+            // Standard: all 13 values + 2 jokers
+            suits.forEach(s => values.forEach(v => deck.push(v+s)));
+            deck.push(WILD, WILD);
+        } else {
+            // Custom wild: skip the chosen value from normal cards, no jokers
+            suits.forEach(s => values.forEach(v => {
+                if (v !== wildCardSetting) deck.push(v+s);
+            }));
+            // Add 4 wilds (one per suit-slot of the chosen value) + 4 more = 8 wilds per deck
+            for (let w = 0; w < 8; w++) deck.push(WILD);
+        }
+    }
+    shuffle(deck); recyclePile = [];
+    playerGoal = deck.splice(0, goalSize); aiGoal = deck.splice(0, goalSize);
+    playerHand = []; aiHand = [];
+    center = Array.from({length:5}, () => []);
+    playerDiscard = Array.from({length:5}, () => []);
+    aiDiscard = Array.from({length:5}, () => []);
+    maxDiscardDepth = Array.from({length:5}, () => 0);
+    selectedCard = null; selectedSource = null;
+    expandedPlayerDiscards = new Set(); expandedAiDiscards = new Set();
+    score = 0; document.getElementById("scoreDisplay").textContent = 0;
+    flashQueue = []; if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+    prevHandSnapshot = [];
+    gameOver = false;
+    resetRunTracking();
+
+    // In MP mode P1 is canonical host — always fill BOTH hands here, before any guards run
+    if (typeof mpActive === 'function' && mpActive()) {
+        refillHandToFive(playerHand);
+        refillHandToFive(aiHand);
+        // Determine first player: lowest top goal card wins (re-draw on tie)
+        // playerGoal = P1's goal, aiGoal = P2's goal
+        let p1First = mpDetermineFirstPlayer();
+        playerTurn = p1First ? (mp.myRole === 'p1') : (mp.myRole === 'p2');
+        mp.p1StartsFirst = p1First; // remember for state serialisation
+        const firstMsg = p1First
+            ? (mp.myRole === 'p1' ? 'You go first — lowest goal card!' : `${mp.oppName || 'Opponent'} goes first — lowest goal card.`)
+            : (mp.myRole === 'p2' ? 'You go first — lowest goal card!' : `${mp.oppName || 'Opponent'} goes first — lowest goal card.`);
+        setStatus(firstMsg);
+        selectedCard = null; selectedSource = null;
+        render();
+        mpUpdateWaitBanner();
+        mpUpdateLabels();
+        if (mp.mode === 'broadcast' || mp.mode === 'storage') {
+            setTimeout(() => mpBroadcastState({ type: 'state' }), 100);
+        } else if (mp.mode === 'file') {
+            mpFilePanelShowPlay();
+        }
+    } else {
+        playDeal(); startPlayerTurn();
+    }
+    document.getElementById('mpBtn').style.display = (typeof mpActive === 'function' && mpActive()) ? 'inline-block' : 'none';
+}
+
+// Compare top goal cards; return true if P1 goes first.
+// If tied, keep drawing temporary cards from the deck until one is lower.
+function mpDetermineFirstPlayer() {
+    const p1Val = cardValue(playerGoal[playerGoal.length - 1]);
+    const p2Val = cardValue(aiGoal[aiGoal.length - 1]);
+    if (p1Val !== p2Val) return p1Val < p2Val;
+    // Tie — draw tiebreak cards from the deck (don't consume them, just peek)
+    for (let attempt = 0; attempt < 20; attempt++) {
+        tryRefillDeck();
+        if (deck.length < 2) break;
+        const a = cardValue(deck[attempt * 2 % deck.length]);
+        const b = cardValue(deck[(attempt * 2 + 1) % deck.length]);
+        if (a !== b) return a < b;
+    }
+    return Math.random() < 0.5; // absolute fallback
+}
+
+function refillHandToFive(hand) {
+    while (hand.length < 5) { tryRefillDeck(); if (!deck.length) break; hand.push(deck.shift()); }
+}
+
+function startPlayerTurn() {
+    playerTurn = true;
+    // In MP mode, hand is managed by the canonical state from host — don't draw locally
+    if (!(typeof mpActive === 'function' && mpActive())) {
+        refillHandToFive(playerHand);
+    }
+    selectedCard = null; selectedSource = null;
+    resetRunTracking();
+    if (centreHasTopWild()) {
+        setStatus("⚠ Cover the wild on the centre before discarding — keep playing!");
+    } else {
+        const wc = countPlayerWilds();
+        setStatus(wc > 0 ? `Your turn — ${wc} wild${wc > 1 ? "s" : ""} in possession · drag or click` : "Your turn — drag or click cards to play");
+    }
+    render();
+    // MP hook
+    if (typeof mpActive === 'function' && mpActive()) {
+        mpUpdateWaitBanner();
+    }
+}
+
+const setStatus = msg => document.getElementById("statusMsg").textContent = msg;
+
+// ============================================================
+//  FLASH HELPERS
+// ============================================================
+function showBlocked() {
+    const el = document.getElementById("blockedFlash");
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 1000);
+}
+
+// ============================================================
+//  DRAG AND DROP
+// ============================================================
+function initDrag(card, source, clientX, clientY, originEl) {
+    if (!playerTurn) return;
+    dragCard = card; dragSource = source;
+    // Render into ghost — renderCardFace stomps position/display so restore after
+    renderCardFace(dragGhostEl, card, null);
+    dragGhostEl.style.position = "fixed";
+    dragGhostEl.style.width = "64px";
+    dragGhostEl.style.height = "92px";
+    dragGhostEl.style.backgroundColor = "var(--card-white)";
+    dragGhostEl.style.transform = "rotate(4deg) scale(1.08)";
+    dragGhostEl.style.boxShadow = "0 20px 40px rgba(0,0,0,0.6)";
+    // renderCardFace sets display:block then flex for J/Q/K — keep flex if set, else block
+    if (!dragGhostEl.style.display || dragGhostEl.style.display === "none") dragGhostEl.style.display = "block";
+
+    dragOffsetX = 32; dragOffsetY = 46;
+    moveDragGhost(clientX, clientY);
+    if (originEl) originEl.classList.add("dragging");
+    highlightDropZones(card);
+    document.addEventListener("mousemove", onDragMove);
+    document.addEventListener("mouseup", onDragEnd);
+    document.addEventListener("touchmove", onDragTouchMove, { passive:false });
+    document.addEventListener("touchend", onDragTouchEnd);
+}
+
+const moveDragGhost = (cx, cy) => { dragGhostEl.style.left = (cx - dragOffsetX) + "px"; dragGhostEl.style.top = (cy - dragOffsetY) + "px"; };
+const onDragMove = e => { moveDragGhost(e.clientX, e.clientY); updateDropHover(e.clientX, e.clientY); };
+const onDragTouchMove = e => { e.preventDefault(); const t = e.touches[0]; moveDragGhost(t.clientX, t.clientY); updateDropHover(t.clientX, t.clientY); };
+const onDragEnd = e => finishDrag(e.clientX, e.clientY);
+const onDragTouchEnd = e => { const t = e.changedTouches[0]; finishDrag(t.clientX, t.clientY); };
+
+function updateDropHover(cx, cy) {
+    if (currentDropTarget) { currentDropTarget.classList.remove("drop-zone-hover"); currentDropTarget = null; }
+    dragGhostEl.style.display = "none";
+    const el = document.elementFromPoint(cx, cy);
+    dragGhostEl.style.display = "block";
+    if (el) { const dz = el.closest("[data-dropzone]"); if (dz && dz.classList.contains("drop-zone-active")) { dz.classList.add("drop-zone-hover"); currentDropTarget = dz; } }
+}
+
+function finishDrag(cx, cy) {
+    document.removeEventListener("mousemove", onDragMove); document.removeEventListener("mouseup", onDragEnd);
+    document.removeEventListener("touchmove", onDragTouchMove); document.removeEventListener("touchend", onDragTouchEnd);
+    dragGhostEl.style.display = "none"; dragGhostEl.style.transform = ""; dragGhostEl.style.boxShadow = ""; clearDropZones();
+    if (!dragCard) return;
+    const el = document.elementFromPoint(cx, cy);
+    if (el) {
+        const dz = el.closest("[data-dropzone]");
+        if (dz) {
+            const type = dz.getAttribute("data-dropzone"), idx = parseInt(dz.getAttribute("data-idx"));
+            if (type === "center") tryPlayToCenter(idx);
+            else if (type === "pdiscard") tryDiscardTo(idx);
+        }
+    }
+    dragCard = null; dragSource = null;
+    document.querySelectorAll(".dragging").forEach(e => e.classList.remove("dragging"));
+    render();
+}
+
+// Get the next needed value index (1-based), skipping the wild rank if a custom wild is set
+function nextCenterValue(currentVal) {
+    let next = currentVal + 1;
+    if (wildCardSetting !== "joker") {
+        const wildIdx = values.indexOf(wildCardSetting) + 1; // 1-based
+        if (next === wildIdx) next++; // skip the wild rank
+    }
+    return next;
+}
+
+// Returns true when a center stack should be cleared (reached its terminal card)
+// Normally King (13), but if King is wild it clears at Queen (12)
+function isCenterComplete(val) {
+    if (val >= 13) return true;
+    // If K is wild, stack completes at Q (12)
+    if (wildCardSetting === "K" && val === 12) return true;
+    return false;
+}
+
+const centerNeeded = i => {
+    if (center[i].length === 0) {
+        // If Ace is wild, first card needed is 2
+        return (wildCardSetting !== "joker" && values.indexOf(wildCardSetting) === 0) ? 2 : 1;
+    }
+    return nextCenterValue(cardValue(center[i][center[i].length-1]));
+};
+
+function highlightDropZones(card) {
+    const cv = cardValue(card);
+    const isUnresolvedWild = card.startsWith(WILD) && !card.includes("(");
+    for (let i = 0; i < 5; i++) {
+        const needed = centerNeeded(i);
+        const canPlay = isUnresolvedWild ? wildCanFillSlotNoFollow(needed) : (cv === needed);
+        if (canPlay) {
+            const dz = document.querySelector(`[data-dropzone="center"][data-idx="${i}"]`);
+            if (dz) dz.classList.add("drop-zone-active");
+        }
+    }
+    // Only allow discarding from hand, and only when no uncovered wild is on the centre
+    if (dragSource && dragSource.type === "hand" && !centreHasTopWild()) {
+        document.querySelectorAll(`[data-dropzone="pdiscard"]`).forEach(dz => dz.classList.add("drop-zone-active"));
+    }
+}
+
+const clearDropZones = () => document.querySelectorAll(".drop-zone-active").forEach(el => el.classList.remove("drop-zone-active", "drop-zone-hover"));
+
+// ============================================================
+//  STACK BUILDERS
+// ============================================================
+const SLIVER_OFFSETS = [3, 5, 7, 9, 10, 11, 12, 13, 14]; // px peeking below top card
+
+function buildSlivers(count) {
+    if (count <= 0) return null;
+    const wrap = document.createElement("div"); wrap.className = "stack-layers";
+    const visCount = Math.min(count, SLIVER_OFFSETS.length);
+    // render deepest first so top layers paint over them
+    for (let k = visCount - 1; k >= 0; k--) {
+        const offset = SLIVER_OFFSETS[k];
+        const l = document.createElement("div"); l.className = "stack-layer";
+        // Each layer: slightly darker/more offset the deeper it is
+        const darkness = 80 - k * 6;
+        const darkness2 = 65 - k * 6;
+        l.style.background = `linear-gradient(160deg, hsl(30,18%,${darkness}%) 0%, hsl(28,16%,${darkness2}%) 100%)`;
+        l.style.top = offset + "px";
+        l.style.zIndex = (visCount - k).toString();
+        wrap.appendChild(l);
+    }
+    // Wrap needs enough height to show the deepest layer peeking out
+    const maxOffset = SLIVER_OFFSETS[visCount - 1];
+    wrap.style.height = (92 + maxOffset) + "px";
+    return wrap;
+}
+
+function setDropzone(el, type, idx) { el.setAttribute("data-dropzone", type); el.setAttribute("data-idx", idx); }
+function makeEmpty(dt, di) { const e = document.createElement("div"); e.className = "stack-empty"; e.textContent = "Empty"; if (dt) setDropzone(e, dt, di); return e; }
+
+function buildStackDiv(stack, onTopCardClick, showList, dropzoneType, dropzoneIdx) {
+    if (stack.length === 0) return makeEmpty(dropzoneType, dropzoneIdx);
+    const wrap = document.createElement("div"); wrap.className = "stack-wrap";
+    if (dropzoneType) setDropzone(wrap, dropzoneType, dropzoneIdx);
+    const top = document.createElement("div"); top.className = "top-card";
+    if (onTopCardClick) top.onclick = e => { e.stopPropagation(); onTopCardClick(e); };
+    const listHtml = (showList && stack.length > 1) ? stack.slice(0, -1).reverse().map(c => {
+        const { val, suit } = parseCard(c);
+        const isPurple = suit === "★", isRed = suitColor(suit) === "red";
+        const col = isPurple ? "purple" : isRed ? "#c41e3a" : "#1a1a1a";
+        const sh = (!isPurple && suit !== "♣") ? `<span class="suit-large" style="color:${col}">${suit}</span>` : `<span style="color:${col}">${suit}</span>`;
+        return `<span style="color:${col}">${val}${sh}</span>`;
+    }).join(" ") : null;
+    renderCardFace(top, stack[stack.length-1], listHtml);
+    if (dropzoneType === "pdiscard") {
+        const card = stack[stack.length-1], src = { type:"discard", index:dropzoneIdx };
+        top.addEventListener("mousedown", e => { if (playerTurn) initDrag(card, src, e.clientX, e.clientY, top); });
+        top.addEventListener("touchstart", e => { if (playerTurn) { const t = e.touches[0]; initDrag(card, src, t.clientX, t.clientY, top); } }, { passive:true });
+    }
+    wrap.appendChild(top);
+    const slivers = buildSlivers(stack.length - 1); if (slivers) { wrap.insertBefore(slivers, top); top.style.position = "relative"; top.style.zIndex = "10"; }
+    return wrap;
+}
+
+function buildGoalDiv(cardText, count, extraClass, onClick, isDraggable) {
+    const wrap = document.createElement("div"); wrap.className = "goal-wrap";
+    const card = document.createElement("div"); card.className = "goal-card" + (extraClass ? " " + extraClass : "");
+    if (extraClass && extraClass.includes("draw-card")) {
+        Object.assign(card.style, { display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center" });
+        card.textContent = cardText;
+    } else renderCardFace(card, cardText, null);
+    if (onClick) card.onclick = onClick;
+    if (isDraggable) {
+        card.addEventListener("mousedown", e => { if (playerTurn) initDrag(cardText, { type:"goal" }, e.clientX, e.clientY, card); });
+        card.addEventListener("touchstart", e => { if (playerTurn) { const t = e.touches[0]; initDrag(cardText, { type:"goal" }, t.clientX, t.clientY, card); } }, { passive:true });
+    }
+    wrap.appendChild(card);
+    const slivers = buildSlivers(count); if (slivers) { wrap.insertBefore(slivers, card); card.style.position = "relative"; card.style.zIndex = "10"; }
+    return wrap;
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render() {
+    const $ = id => document.getElementById(id);
+
+    // AI goal
+    $("aiGoalArea").innerHTML = "";
+    $("aiGoalArea").appendChild(aiGoal.length ? buildGoalDiv(aiGoal[aiGoal.length-1], Math.min(aiGoal.length-1, 9), "", null, false) : makeEmpty());
+
+    // Draw deck
+    $("drawDeckArea").innerHTML = "";
+    $("drawDeckArea").appendChild(buildGoalDiv(deck.length ? "SPITE\n&\nMALICE" : "EMPTY", Math.min(Math.max(0, deck.length-1), 9), "draw-card", null, false));
+
+    // Player goal
+    $("playerGoalArea").innerHTML = "";
+    if (playerGoal.length) {
+        const card = playerGoal[playerGoal.length-1];
+        $("playerGoalArea").appendChild(buildGoalDiv(card, Math.min(playerGoal.length-1, 9), "", playerTurn ? () => selectCard(card, "goal", playerGoal.length-1) : null, playerTurn));
+    } else $("playerGoalArea").appendChild(makeEmpty());
+
+    // Center stacks
+    $("center").innerHTML = "";
+    center.forEach((stack, i) => {
+        const el = buildStackDiv(stack, null, false, "center", i);
+        el.addEventListener("click", () => { if (selectedCard) playToCenter(i); });
+        $("center").appendChild(el);
+    });
+    // Re-apply run glow after DOM rebuild
+    if (currentRunStackIdx >= 0 && runStackCounts[currentRunStackIdx] >= 2) {
+        const depth = Math.min((runStackCounts[currentRunStackIdx] - 2) / 10, 1);
+        updateRunStackGlow(currentRunStackIdx, true, depth);
+    }
+
+    // Flush any deferred particle spawn — DOM is ready now
+    if (pendingParticleSpawn) {
+        const { stackIdx, count } = pendingParticleSpawn;
+        pendingParticleSpawn = null;
+        const cardEl = getCenterEl(stackIdx);
+        if (cardEl) spawnRunParticles(cardEl, count);
+    }
+
+    // Player discard
+    $("playerDiscard").innerHTML = "";
+    playerDiscard.forEach((stack, i) => {
+        const fn = e => { if (e) e.stopPropagation(); if (stack.length) selectCard(stack[stack.length-1], "discard", i); togglePlayerDiscard(i); };
+        $("playerDiscard").appendChild(buildStackDiv(stack, stack.length ? fn : null, expandedPlayerDiscards.has(i), "pdiscard", i));
+    });
+
+    // AI discard
+    $("aiDiscard").innerHTML = "";
+    aiDiscard.forEach((stack, i) => {
+        const fn = stack.length ? e => { if (e) e.stopPropagation(); toggleAiDiscard(i); } : null;
+        $("aiDiscard").appendChild(buildStackDiv(stack, fn, expandedAiDiscards.has(i)));
+    });
+
+    // Hand
+    $("hand").innerHTML = "";
+    const newCards = playerHand.filter(c => !prevHandSnapshot.includes(c));
+    playerHand.forEach((card, i) => {
+        const div = document.createElement("div");
+        const isSel = selectedCard === card && selectedSource && selectedSource.type === "hand" && selectedSource.index === i;
+        div.className = "card" + (isSel ? " selected" : "") + (newCards.includes(card) ? " card-deal" : "");
+        if (newCards.includes(card)) div.style.animationDelay = (i * 0.04) + "s";
+        renderCardFace(div, card, null);
+        div.onclick = () => selectCard(card, "hand", i);
+        div.addEventListener("mousedown", e => initDrag(card, { type:"hand", index:i }, e.clientX, e.clientY, div));
+        div.addEventListener("touchstart", e => { const t = e.touches[0]; initDrag(card, { type:"hand", index:i }, t.clientX, t.clientY, div); }, { passive:true });
+        $("hand").appendChild(div);
+    });
+    prevHandSnapshot = [...playerHand];
+
+    showMoves();
+    // Invalidate cached center element refs after DOM rebuild
+    invalidateCenterElCache();
+    // Keep floating run word anchored above current run stack
+    if (runMultiplier > 0) positionRunWord();
+    // MP hook
+    if (typeof mpActive === 'function' && mpActive()) {
+        mpUpdateWaitBanner();
+        if (mp.mode === 'file') mpUpdateFilePanel();
+    }
+}
+
+function selectCard(card, source, index) {
+    if (!playerTurn) return;
+    if (selectedCard === card && selectedSource && selectedSource.type === source && selectedSource.index === index) { selectedCard = null; selectedSource = null; }
+    else { selectedCard = card; selectedSource = { type:source, index }; }
+    playCardSlide(); render();
+}
+
+const togglePlayerDiscard = i => { if (expandedPlayerDiscards.has(i)) expandedPlayerDiscards.delete(i); else expandedPlayerDiscards.add(i); render(); };
+const toggleAiDiscard = i => { if (expandedAiDiscards.has(i)) expandedAiDiscards.delete(i); else expandedAiDiscards.add(i); render(); };
+
+function showMoves() {
+    const container = document.getElementById("actionButtons"); container.innerHTML = "";
+    const wildCount = countPlayerWilds();
+    const topWildBlocking = centreHasTopWild(); // blocks ending turn (discard)
+    if (!selectedCard) {
+        if (topWildBlocking) {
+            setStatus("⚠ Cover the wild on the centre before discarding — keep playing!");
+        } else if (wildCount > 0) {
+            setStatus(`Your turn — ${wildCount} wild${wildCount > 1 ? "s" : ""} in hand · drag or click to play`);
+        } else {
+            setStatus("Your turn — drag or click cards to play");
+        }
+        return;
+    }
+    const cv = cardValue(selectedCard);
+    const isUnresolvedWild = selectedCard.startsWith(WILD) && !selectedCard.includes("(");
+    for (let i = 0; i < 5; i++) {
+        const needed = centerNeeded(i);
+        const canPlay = isUnresolvedWild ? wildCanFillSlotNoFollow(needed) : (cv === needed);
+        if (canPlay) {
+            const btn = document.createElement("button"); btn.textContent = "▶"+(i+1); btn.onclick = () => playToCenter(i); container.appendChild(btn);
+        }
+    }
+    // Discard buttons only allowed from hand, and only when no uncovered wild sits on centre
+    if (selectedSource && selectedSource.type === "hand" && !topWildBlocking) {
+        for (let i = 0; i < 5; i++) {
+            const btn = document.createElement("button"); btn.textContent = "▽"+(i+1); btn.onclick = () => discardTo(i); container.appendChild(btn);
+        }
+    }
+    if (topWildBlocking && selectedSource && selectedSource.type === "hand") {
+        const note = document.createElement("span");
+        note.style.cssText = "font-family:'Cinzel',serif;font-size:10px;color:#ff9944;letter-spacing:1px;align-self:center;margin-left:6px;";
+        note.textContent = "Cover wild before discarding!";
+        container.appendChild(note);
+    }
+}
+
+// ============================================================
+//  PLAY LOGIC
+// ============================================================
+
+// Count wilds available to the player (hand + top of each discard + top of goal)
+function countPlayerWilds() {
+    let count = 0;
+    playerHand.forEach(c => { if (c.startsWith(WILD)) count++; });
+    playerDiscard.forEach(st => { if (st.length && st[st.length-1].startsWith(WILD)) count++; });
+    if (playerGoal.length && playerGoal[playerGoal.length-1].startsWith(WILD)) count++;
+    return count;
+}
+function countAiWilds() {
+    let count = 0;
+    aiHand.forEach(c => { if (c.startsWith(WILD)) count++; });
+    aiDiscard.forEach(st => { if (st.length && st[st.length-1].startsWith(WILD)) count++; });
+    if (aiGoal.length && aiGoal[aiGoal.length-1].startsWith(WILD)) count++;
+    return count;
+}
+
+// Returns true if any centre stack currently has a wild (unresolved or resolved) on top
+// This gates discarding (ending your turn) — you must cover it with a real card first.
+// It does NOT prevent playing more cards to the centre on other stacks.
+function centreHasTopWild() {
+    return center.some(stack => stack.length > 0 && stack[stack.length-1].startsWith(WILD));
+}
+
+// Lightweight structural check: can a wild fill slot `needed`? (no must-follow)
+function wildCanFillSlotNoFollow(needed) {
+    if (needed === 1) return false;
+    const terminalSlot = (wildCardSetting === "K") ? 12 : 13;
+    if (needed >= terminalSlot) return false;
+    if (wildCardSetting !== "joker") {
+        const wildIdx = values.indexOf(wildCardSetting) + 1;
+        if (needed === wildIdx) return false;
+    }
+    return true;
+}
+
+// Build a pool of available real (non-wild) cards as a value-count map,
+// and count available wilds, from hand + goal top + discard tops.
+function buildAvailablePool(hand, goal, discards) {
+    const realCards = {}; // value -> count
+    let wilds = 0;
+    const add = c => {
+        if (c.startsWith(WILD)) { wilds++; }
+        else { const v = cardValue(c); if (v > 0) realCards[v] = (realCards[v] || 0) + 1; }
+    };
+    hand.forEach(add);
+    if (goal.length) add(goal[goal.length - 1]);
+    discards.forEach(st => { if (st.length) add(st[st.length - 1]); });
+    return { realCards, wilds };
+}
+
+// Recursive feasibility check: given a list of centre stacks that currently have
+// a wild on top (each needing `neededVal` to be covered), and a pool of available
+// cards, can ALL of them be covered before the turn ends?
+// `neededVals` = array of the next required value for each uncovered-wild stack.
+// Mutates pool in place for recursion, restores on backtrack.
+function canCoverAllWilds(neededVals, pool) {
+    if (neededVals.length === 0) return true; // all covered
+    const needed = neededVals[0];
+    const rest = neededVals.slice(1);
+    const terminalSlot = (wildCardSetting === "K") ? 12 : 13;
+
+    // Option A: cover with a real card
+    if ((pool.realCards[needed] || 0) > 0) {
+        pool.realCards[needed]--;
+        if (canCoverAllWilds(rest, pool)) { pool.realCards[needed]++; return true; }
+        pool.realCards[needed]++;
+    }
+
+    // Option B: cover with another wild (extends the chain — adds a new needed value)
+    if (pool.wilds > 0 && wildCanFillSlotNoFollow(needed)) {
+        const nextNeeded = nextCenterValue(needed);
+        // The new wild itself needs covering, so append its follow-slot to the list
+        pool.wilds--;
+        if (canCoverAllWilds([...rest, nextNeeded], pool)) { pool.wilds++; return true; }
+        pool.wilds++;
+    }
+
+    return false;
+}
+
+// For an unresolved wild card, can it legally fill the needed slot?
+// Checks that after playing the wild, ALL centre wild-tops (including this new one)
+// can still be covered with remaining cards before the turn must end.
+// `simulatedCenterTops` = current centre tops AFTER the hypothetical wild play,
+//   as an array of {isWild, neededNext} for each stack that would have a wild on top.
+// For convenience we expose two entry points: one for player, one for AI.
+function wildCanFillSlot(needed, forPlayer = false, forAI = false) {
+    if (!wildCanFillSlotNoFollow(needed)) return false;
+    if (!forPlayer && !forAI) return true; // structural check only
+
+    const hand     = forPlayer ? playerHand     : aiHand;
+    const goal     = forPlayer ? playerGoal     : aiGoal;
+    const discards = forPlayer ? playerDiscard  : aiDiscard;
+
+    // Build pool EXCLUDING the wild card being played right now
+    // (caller has not removed it from hand yet, so we subtract one wild)
+    const pool = buildAvailablePool(hand, goal, discards);
+    pool.wilds = Math.max(0, pool.wilds - 1); // the wild being played is consumed
+
+    // Collect all centre stacks that will have an uncovered wild AFTER this play:
+    // existing uncovered wilds + the new one we're about to place.
+    const neededVals = [];
+    for (let i = 0; i < 5; i++) {
+        if (center[i].length > 0 && center[i][center[i].length - 1].startsWith(WILD)) {
+            neededVals.push(centerNeeded(i));
+        }
+    }
+    // Add the new wild we're about to play
+    neededVals.push(nextCenterValue(needed));
+
+    return canCoverAllWilds(neededVals, pool);
+}
+
+// Check whether hand/goal/discard tops contain a real (non-wild) follow-up card of the given value
+function hasFollowCard(hand, goal, discards, needed) {
+    if (hand.some(c => !c.startsWith(WILD) && cardValue(c) === needed)) return true;
+    if (goal.length && !goal[goal.length-1].startsWith(WILD) && cardValue(goal[goal.length - 1]) === needed) return true;
+    if (discards.some(st => st.length && !st[st.length-1].startsWith(WILD) && cardValue(st[st.length - 1]) === needed)) return true;
+    return false;
+}
+const playerHasFollowCard = needed => hasFollowCard(playerHand, playerGoal, playerDiscard, needed);
+const aiHasFollowCard     = needed => hasFollowCard(aiHand,     aiGoal,     aiDiscard,     needed);
+
+const resolveWild = (card, needed) => (card.startsWith(WILD) && !card.includes("(")) ? WILD+"("+values[needed-1]+")" : card;
+const getCenterEl = i => document.querySelector(`[data-dropzone="center"][data-idx="${i}"] .top-card`) || document.querySelector(`[data-dropzone="center"][data-idx="${i}"]`);
+
+function playCardToCenter(idx, card, source) {
+    const needed = centerNeeded(idx), cv = cardValue(card);
+    const isUnresolvedWild = card.startsWith(WILD) && !card.includes("(");
+    if (isUnresolvedWild) {
+        if (!wildCanFillSlotNoFollow(needed)) return false;
+    } else {
+        if (cv !== needed) return false;
+    }
+
+    const played = resolveWild(card, needed);
+    center[idx].push(played);
+    const stackEl = getCenterEl(idx);
+
+    // Base +1 per center play
+    addScore(1, stackEl);
+
+    // Block AI bonus — also boosts the run multiplier by 1
+    if (aiGoal.length) {
+        const aiTopVal = cardValue(aiGoal[aiGoal.length-1]);
+        if (aiTopVal > 0 && cardValue(played) === aiTopVal) {
+            addScore(55, stackEl); playBlock(); showBlocked();
+            boostRunMultiplier(1, "BLOCK +1×");
+        }
+    }
+
+    // Track run — ALL sources (hand, discard, goal) count toward the run
+    recordCardPlayedToStack(idx);
+
+    const isKing = isCenterComplete(cardValue(played));
+    if (isKing) {
+        addScore(SCORE.CENTER_CLEAR, stackEl);
+        clearCenterStack(idx); playSuccess();
+        if (source && source.type === "goal") {
+            addScore(SCORE.GOAL_PLAY, stackEl);
+            boostRunMultiplier(1, "GOAL +1×");  // goal clears give run boost
+            setTimeout(playGoalPlay, 520);
+        } else if (source && source.type === "discard") {
+            setTimeout(playDiscardClear, 520);
+            boostRunMultiplier(1, "CLEAR +1×");
+        }
+    } else if (source && source.type === "goal") {
+        addScore(SCORE.GOAL_PLAY, stackEl);
+        boostRunMultiplier(1, "GOAL +1×");  // every goal play boosts run
+        playGoalPlay();
+    } else {
+        playCardPlace();
+    }
+    return true;
+}
+
+function tryPlayToCenter(idx) {
+    if (!dragCard || !dragSource) return;
+    if (!playCardToCenter(idx, dragCard, dragSource)) { playError(); return; }
+    const didClear = center[idx].length === 0;
+    removeFromSource(dragSource, didClear);
+    if (playerHand.length === 0) refillHandToFive(playerHand);
+    selectedCard = null; selectedSource = null;
+    if (!checkWin()) render();
+    // MP: sync state after every play so opponent sees live board
+    if (typeof mpActive === 'function' && mpActive()) mpBroadcastState({ type: 'state' });
+}
+
+function tryDiscardTo(idx) {
+    if (!dragCard || !dragSource || dragSource.type !== "hand") { playError(); return; }
+    if (centreHasTopWild()) {
+        playError();
+        setStatus("⚠ Cover the wild on the centre first — play a non-wild card on it!");
+        showBlocked();
+        return;
+    }
+    playerDiscard[idx].push(dragCard); playerHand.splice(dragSource.index, 1);
+    maxDiscardDepth[idx] = Math.max(maxDiscardDepth[idx], playerDiscard[idx].length);
+    playCardSlide(); selectedCard = null; selectedSource = null; endPlayerTurn();
+}
+
+function playToCenter(i) {
+    if (!selectedCard || !playCardToCenter(i, selectedCard, selectedSource)) { playError(); return; }
+    const didClear = center[i].length === 0;
+    removeSelected(didClear);
+    if (playerHand.length === 0) refillHandToFive(playerHand);
+    if (!checkWin()) render();
+    // MP: sync state after every play
+    if (typeof mpActive === 'function' && mpActive()) mpBroadcastState({ type: 'state' });
+}
+
+function discardTo(i) {
+    if (!selectedCard) return;
+    if (centreHasTopWild()) {
+        playError();
+        setStatus("⚠ Cover the wild on the centre first — play a non-wild card on it!");
+        showBlocked();
+        return;
+    }
+    playerDiscard[i].push(selectedCard);
+    maxDiscardDepth[i] = Math.max(maxDiscardDepth[i], playerDiscard[i].length);
+    removeSelected(); playCardSlide(); endPlayerTurn();
+}
+
+function endPlayerTurn() {
+    settleRunBonus();       // award run bonus before switching
+    playerTurn = false;
+    // -- Multiplayer hook --
+    if (mpActive()) {
+        mpOnMyTurnEnd();
+        return;
+    }
+    document.getElementById("aiThinking").classList.add("show");
+    setStatus("AI is thinking…"); render();
+    setTimeout(aiTurn, 700);
+}
+
+function removeFromSource(source, centerCleared = false) {
+    if (!source) return;
+    if (source.type === "hand") {
+        playerHand.splice(source.index, 1);
+    } else if (source.type === "discard") {
+        const peakDepth = maxDiscardDepth[source.index];
+        playerDiscard[source.index].pop();
+        if (playerDiscard[source.index].length === 0) {
+            maxDiscardDepth[source.index] = 0;
+            const pts = peakDepth >= 4 ? 25 : peakDepth === 3 ? 20 : peakDepth === 2 ? 10 : 0;
+            if (pts > 0) {
+                const discardEls = document.querySelectorAll("#playerDiscard .stack-wrap, #playerDiscard .stack-empty");
+                addScore(pts, discardEls[source.index]);
+            }
+            // Clearing a discard pile mid-run jumps multiplier by 2
+            const boost = peakDepth >= 4 ? 2 : peakDepth >= 2 ? 1 : 0;
+            if (boost > 0) boostRunMultiplier(boost, "CLEAR +" + boost + "×");
+            if (centerCleared) setTimeout(playDiscardClear, 520);
+            else playDiscardClear();
+        }
+    } else if (source.type === "goal") {
+        playerGoal.pop();
+    }
+}
+
+function removeSelected(centerCleared = false) {
+    removeFromSource(selectedSource, centerCleared); selectedCard = null; selectedSource = null;
+}
+
+function checkWin() {
+    if (gameOver) return true;
+    if (playerGoal.length === 0) {
+        gameOver = true;
+        if (mpActive()) {
+            const myName = mp.myName || "You";
+            showWin(`${myName.toUpperCase()} WIN!`, "Goal pile cleared. Glorious victory!");
+            mpBroadcastState({ type: 'win', winner: mp.myRole });
+        } else {
+            showWin("YOU WIN!", "You cleared your goal pile. Glorious!");
+        }
+        return true;
+    }
+    if (aiGoal.length === 0) {
+        gameOver = true;
+        if (mpActive()) {
+            const oppName = mp.oppName || "Opponent";
+            showWin(`${oppName.toUpperCase()} WINS`, "Your opponent cleared their goal pile.");
+            mpBroadcastState({ type: 'win', winner: mp.oppRole });
+        } else {
+            showWin("AI WINS", "The machine was merciless this time.");
+        }
+        return true;
+    }
+    return false;
+}
+
+function showWin(title, sub) {
+    const won = title === "YOU WIN!";
+    if (won) addScore(SCORE.WIN, document.getElementById("scoreDisplay"));
+    playWin(); saveHighScore();
+    document.getElementById("winText").textContent = title;
+    document.getElementById("winScore").textContent = won ? "Score: " + score : "";
+    const hs = getHighScores();
+    document.getElementById("winSub").textContent = (won && hs[0] && hs[0].score === score) ? "🏆 New high score!" : sub;
+    document.getElementById("winOverlay").classList.add("show");
+}
+
+function startNewGame() { document.getElementById("winOverlay").classList.remove("show"); deal(); }
+function restartGame() { if (!confirm("Restart the current game? Your score will be lost.")) return; closeSettings(); deal(); }
+
+function saveGameToFile() {
+    const state = {
+        v: 1,
+        savedAt: new Date().toISOString(),
+        settings: { tripleMode, wildCardSetting },
+        game: {
+            deck, recyclePile,
+            center, playerGoal, aiGoal,
+            playerHand, aiHand,
+            playerDiscard, aiDiscard,
+            maxDiscardDepth,
+            score, playerTurn,
+            runStackCounts, runMultiplier, currentRunStackIdx,
+        }
+    };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0,10);
+    a.href     = url;
+    a.download = `spite-malice-${dateStr}.spm`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function loadGameFromFile() {
+    document.getElementById("loadFileInput").click();
+}
+
+function handleLoadFile(e) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+        try {
+            const state = JSON.parse(evt.target.result);
+            if (!state.v || !state.game || !state.settings) throw new Error("Invalid save file.");
+
+            tripleMode      = state.settings.tripleMode;
+            wildCardSetting = state.settings.wildCardSetting;
+
+            const g = state.game;
+            deck               = g.deck;
+            recyclePile        = g.recyclePile;
+            center             = g.center;
+            playerGoal         = g.playerGoal;
+            aiGoal             = g.aiGoal;
+            playerHand         = g.playerHand;
+            aiHand             = g.aiHand;
+            playerDiscard      = g.playerDiscard;
+            aiDiscard          = g.aiDiscard;
+            maxDiscardDepth    = g.maxDiscardDepth;
+            score              = g.score;
+            playerTurn         = g.playerTurn;
+            runStackCounts     = g.runStackCounts     || [0,0,0,0,0];
+            runMultiplier      = g.runMultiplier      || 0;
+            currentRunStackIdx = g.currentRunStackIdx ?? -1;
+
+            gameOver = false;
+            selectedCard = null; selectedSource = null;
+            prevHandSnapshot = [];
+            expandedPlayerDiscards = new Set();
+            expandedAiDiscards     = new Set();
+            flashQueue = []; if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+            document.getElementById("scoreDisplay").textContent = score;
+            loadBestScore(); loadBestRun();
+
+            closeSettings();
+            if (playerTurn) {
+                setStatus("Game loaded — your turn!");
+            } else {
+                setStatus("Game loaded — AI is thinking\u2026");
+                document.getElementById("aiThinking").classList.add("show");
+            }
+            render();
+            if (!playerTurn) setTimeout(aiTurn, 700);
+        } catch(err) {
+            alert("Could not load save file: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// ============================================================
+//  AI TURN
+// ============================================================
+
+// Stricter wild-play check used ONLY by the AI.
+// The AI will only play a wild onto slot `needed` if:
+//  1. The slot is structurally valid (wildCanFillSlotNoFollow).
+//  2. The AI has a REAL (non-wild) follow card for the next slot AND that follow card
+//     will still be available after accounting for ALL existing uncovered centre wilds
+//     (i.e. the follow card isn't already needed elsewhere).
+//  3. The general feasibility check (wildCanFillSlot) still passes.
+// This is intentionally stricter than the player check — the AI must never leave
+// an uncovered wild it cannot immediately resolve with a real card.
+function aiWildCanFillSlot(needed) {
+    if (!wildCanFillSlotNoFollow(needed)) return false;
+    const followNeeded = nextCenterValue(needed);
+    if (!aiHasFollowCard(followNeeded)) return false;
+
+    // Build a pool and simulate: consume the wild being played, then check that
+    // ALL existing uncovered wilds PLUS the new one can still be resolved.
+    // This prevents the AI playing a wild whose follow card is already earmarked
+    // to cover a different existing wild-top.
+    const pool = buildAvailablePool(aiHand, aiGoal, aiDiscard);
+    pool.wilds = Math.max(0, pool.wilds - 1); // the wild being played is consumed
+
+    // Existing uncovered wild-tops on the centre
+    const neededVals = [];
+    for (let i = 0; i < 5; i++) {
+        if (center[i].length > 0 && center[i][center[i].length - 1].startsWith(WILD)) {
+            neededVals.push(centerNeeded(i));
+        }
+    }
+    // The NEW wild we're about to play also needs covering
+    neededVals.push(followNeeded);
+
+    return canCoverAllWilds(neededVals, pool);
+}
+
+function tryAiPlayCard(card, onSuccess) {
+    for (let c = 0; c < 5; c++) {
+        const needed = centerNeeded(c), cv = cardValue(card);
+        const isWild = card.startsWith(WILD) && !card.includes("(");
+        // Wilds: cannot open an empty stack; use the stricter AI-only check.
+        if (isWild) {
+            if (center[c].length === 0) continue;
+            if (!aiWildCanFillSlot(needed)) continue;
+        } else {
+            if (cv !== needed) continue;
+        }
+        center[c].push(isWild ? WILD+"("+values[needed-1]+")" : card);
+        if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+        onSuccess(); playAiTurn(); return true;
+    }
+    return false;
+}
+
+function aiTurn() {
+    document.getElementById("aiThinking").classList.add("show");
+    refillHandToFive(aiHand);
+    let anyPlayed = true;
+    while (anyPlayed) {
+        anyPlayed = false;
+        if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
+        for (let d = 0; d < 5 && !anyPlayed; d++) {
+            if (!aiDiscard[d].length) continue;
+            if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
+        }
+        if (anyPlayed) continue;
+        for (let i = 0; i < aiHand.length && !anyPlayed; i++) {
+            if (tryAiPlayCard(aiHand[i], () => aiHand.splice(i, 1))) anyPlayed = true;
+        }
+    }
+
+    // Mandatory: before discarding, every centre wild-top MUST be covered with a real card.
+    // The wildCanFillSlot check should have prevented unresolvable wilds, but subsequent
+    // plays may have consumed the covering card. Do a final forced cover pass now.
+    // Loop until no more uncovered wilds remain or no progress can be made.
+    let coverProgress = true;
+    while (coverProgress && centreHasTopWild()) {
+        coverProgress = false;
+        for (let c = 0; c < 5; c++) {
+            if (!center[c].length || !center[c][center[c].length-1].startsWith(WILD)) continue;
+            const needed = centerNeeded(c);
+            let covered = false;
+            // Try goal
+            if (aiGoal.length && !aiGoal[aiGoal.length-1].startsWith(WILD) && cardValue(aiGoal[aiGoal.length-1]) === needed) {
+                center[c].push(aiGoal.pop()); playAiTurn();
+                if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                covered = true;
+            }
+            // Try hand
+            if (!covered) {
+                for (let i = 0; i < aiHand.length; i++) {
+                    if (!aiHand[i].startsWith(WILD) && cardValue(aiHand[i]) === needed) {
+                        center[c].push(aiHand.splice(i, 1)[0]); playAiTurn();
+                        if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                        covered = true; break;
+                    }
+                }
+            }
+            // Try discards
+            if (!covered) {
+                for (let d = 0; d < 5; d++) {
+                    if (!aiDiscard[d].length) continue;
+                    const dc = aiDiscard[d][aiDiscard[d].length-1];
+                    if (!dc.startsWith(WILD) && cardValue(dc) === needed) {
+                        center[c].push(aiDiscard[d].pop()); playAiTurn();
+                        if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                        covered = true; break;
+                    }
+                }
+            }
+            if (covered) {
+                coverProgress = true;
+                break; // restart the outer while loop to re-check all stacks
+            }
+        }
+    }
+    // After cover pass, run the main play loop once more in case covering opened new plays
+    if (!centreHasTopWild()) {
+        anyPlayed = true;
+        while (anyPlayed) {
+            anyPlayed = false;
+            if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
+            for (let d = 0; d < 5 && !anyPlayed; d++) {
+                if (!aiDiscard[d].length) continue;
+                if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
+            }
+            if (anyPlayed) continue;
+            for (let i = 0; i < aiHand.length && !anyPlayed; i++) {
+                if (tryAiPlayCard(aiHand[i], () => aiHand.splice(i, 1))) anyPlayed = true;
+            }
+        }
+    }
+
+    // Discard is MANDATORY to end the turn — always discard one card.
+    // Refill first if hand was emptied by plays above.
+    if (aiHand.length === 0) refillHandToFive(aiHand);
+    if (aiHand.length > 0) {
+        // Collect values needed to cover any current centre wild-top.
+        // Discarding those cards would leave the centre permanently blocked.
+        const wildCoverNeeds = new Set();
+        for (let c = 0; c < 5; c++) {
+            if (center[c].length > 0 && center[c][center[c].length-1].startsWith(WILD)) {
+                wildCoverNeeds.add(centerNeeded(c));
+            }
+        }
+        const cNeeds = center.map((_, i) => centerNeeded(i));
+        const dScore = card => {
+            const cv = cardValue(card);
+            if (cv <= 0) return -999;
+            // Never discard a wild card face-up (leaves future turns potentially stuck)
+            if (card.startsWith(WILD)) return -998;
+            // Never discard a card needed to cover an existing centre wild
+            if (wildCoverNeeds.has(cv)) return -997;
+            return Math.min(...cNeeds.map(n => Math.abs(cv - n))) * 2 + cv;
+        };
+        const sScore = (d, card) => { const st = aiDiscard[d], cv = cardValue(card); if (!st.length) return 10; const tv = cardValue(st[st.length-1]); if (tv - cv === 1) return 25; if (tv === cv) return 20; if (tv - cv === 2) return 12; if (cv > tv) return 3; return 1; };
+        const bi = aiHand.reduce((b, c, i) => dScore(c) > dScore(aiHand[b]) ? i : b, 0);
+        const bs = [0,1,2,3,4].reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
+        aiDiscard[bs].push(aiHand.splice(bi, 1)[0]);
+    }
+    document.getElementById("aiThinking").classList.remove("show");
+    if (!checkWin()) startPlayerTurn();
+}
+
+// ============================================================
+//  PARTICLE SYSTEM
+// ============================================================
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let particles = [];
+let pAnimId = null;
+// Detect low-end device: limit particles and skip shadowBlur
+const isLowEnd = navigator.hardwareConcurrency <= 4 || /Android [1-7]\./.test(navigator.userAgent);
+const MAX_PARTICLES = isLowEnd ? 30 : 80;
+const USE_SHADOW = !isLowEnd;
+
+// Cache for center dropzone elements to avoid per-frame querySelector
+const _centerElCache = new Map();
+function getCachedCenterEl(stackIdx) {
+    if (_centerElCache.has(stackIdx)) return _centerElCache.get(stackIdx);
+    const el = document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"] .top-card`)
+             || document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"]`);
+    if (el) _centerElCache.set(stackIdx, el);
+    return el || null;
+}
+// Invalidate cache after render
+function invalidateCenterElCache() { _centerElCache.clear(); }
+
+function resizeCanvas() {
+    pCanvas.width = window.innerWidth;
+    pCanvas.height = window.innerHeight;
+}
+resizeCanvas();
+let _resizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(resizeCanvas, 150); });
+
+// Ambient orbs that orbit around a card during a run
+function spawnRunParticles(cardEl, count) {
+    if (!cardEl) return;
+    const r = cardEl.getBoundingClientRect();
+    if (!r.width) return; // not visible
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    // Read stackIdx from the element's ancestor dropzone
+    const dzEl = cardEl.closest('[data-dropzone="center"]') || cardEl;
+    const stackIdx = parseInt(dzEl.getAttribute('data-idx') ?? '-1');
+
+    const existing = particles.filter(p => p.kind === 'orbit').length;
+    const toSpawn = Math.min(count, MAX_PARTICLES - existing - 10);
+    for (let i = 0; i < toSpawn; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 28 + Math.random() * 26;
+        const speed = (Math.random() > 0.5 ? 1 : -1) * (0.012 + Math.random() * 0.018);
+        const hue = 25 + Math.random() * 30;
+        particles.push({
+            kind: 'orbit',
+            cx, cy, angle, radius, speed,
+            size: 1.5 + Math.random() * 2.5,
+            alpha: 0.4 + Math.random() * 0.5,
+            hue,
+            stackIdx, // re-query position each frame using this
+        });
+    }
+    if (!pAnimId) tickParticles();
+}
+
+// Score particles that fly from card to score display
+function spawnScoreParticles(fromEl, count) {
+    if (!fromEl) return;
+    const scoreEl = document.getElementById('scoreDisplay');
+    if (!scoreEl) return;
+    const fr = fromEl.getBoundingClientRect();
+    const tr = scoreEl.getBoundingClientRect();
+    const tx = tr.left + tr.width / 2;
+    const ty = tr.top + tr.height / 2;
+    const toSpawn = Math.min(count, Math.max(1, MAX_PARTICLES - particles.length));
+    for (let i = 0; i < toSpawn; i++) {
+        const sx = fr.left + fr.width * Math.random();
+        const sy = fr.top + fr.height * Math.random();
+        const dur = 0.6 + Math.random() * 0.5;
+        const hue = 45 + Math.random() * 20;
+        particles.push({
+            kind: 'fly',
+            sx, sy, tx, ty,
+            x: sx, y: sy,
+            dur, elapsed: 0,
+            size: 2 + Math.random() * 2,
+            hue,
+            alpha: 0.9,
+        });
+    }
+    if (!pAnimId) tickParticles();
+}
+
+let lastPTime = 0;
+function tickParticles(ts = 0) {
+    const dt = Math.min((ts - lastPTime) / 1000, 0.05);
+    lastPTime = ts;
+
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+    particles = particles.filter(p => {
+        if (p.kind === 'orbit') {
+            // Re-query live card position each frame by stack index
+            if (p.stackIdx >= 0) {
+                const liveEl = getCachedCenterEl(p.stackIdx);
+                if (liveEl) {
+                    const r = liveEl.getBoundingClientRect();
+                    if (r.width > 0) {
+                        p.cx = r.left + r.width / 2;
+                        p.cy = r.top + r.height / 2;
+                    }
+                }
+            }
+            p.angle += p.speed * (1 + dt * 10);
+            const x = p.cx + Math.cos(p.angle) * p.radius;
+            const y = p.cy + Math.sin(p.angle) * p.radius * 0.55; // ellipse
+            // fade if run is gone
+            const alive = currentRunStackIdx >= 0 && runMultiplier > 0;
+            if (!alive) p.alpha -= dt * 1.2;
+            if (p.alpha <= 0) return false;
+            pCtx.save();
+            pCtx.globalAlpha = p.alpha;
+            pCtx.fillStyle = `hsl(${p.hue},95%,65%)`;
+            if (USE_SHADOW) { pCtx.shadowColor = `hsl(${p.hue},100%,60%)`; pCtx.shadowBlur = 6; }
+            pCtx.beginPath();
+            pCtx.arc(x, y, p.size, 0, Math.PI * 2);
+            pCtx.fill();
+            pCtx.restore();
+            return true;
+        }
+        if (p.kind === 'fly') {
+            p.elapsed += dt;
+            const t = Math.min(p.elapsed / p.dur, 1);
+            const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+            p.x = p.sx + (p.tx - p.sx) * ease;
+            p.y = p.sy + (p.ty - p.sy) * ease - Math.sin(t * Math.PI) * 40;
+            p.alpha = t < 0.8 ? 0.9 : 0.9 * (1 - (t - 0.8) / 0.2);
+            pCtx.save();
+            pCtx.globalAlpha = p.alpha;
+            pCtx.fillStyle = `hsl(${p.hue},100%,70%)`;
+            if (USE_SHADOW) { pCtx.shadowColor = `hsl(${p.hue},100%,65%)`; pCtx.shadowBlur = 8; }
+            pCtx.beginPath();
+            pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            pCtx.fill();
+            pCtx.restore();
+            if (t >= 1) return false;
+            return true;
+        }
+        return false;
+    });
+
+    if (particles.length > 0) {
+        pAnimId = requestAnimationFrame(tickParticles);
+    } else {
+        pAnimId = null;
+        pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    }
+}
+
+// ============================================================
+//  MULTIPLAYER ENGINE
+//  Supports three transport layers, all exposing the same API:
+//   1. BroadcastChannel  — same-origin tabs (fast, no polling)
+//   2. localStorage poll — same-origin tabs/iframes (fallback)
+//   3. File swap         — true offline PBEM
+// ============================================================
+
+const mp = {
+    mode:    null,      // 'broadcast' | 'storage' | 'file' | null
+    myRole:  null,      // 'p1' | 'p2'
+    oppRole: null,      // opposite
+    myName:  '',
+    oppName: '',
+    oppScore: 0,        // opponent's score (received from their state)
+    roomKey: '',        // storage key prefix or BC channel name
+    channel: null,      // BroadcastChannel instance
+    pollTimer: null,
+    pollSeq: 0,         // last incoming seq number we processed
+    _sendSeq: 0,        // outgoing message counter
+    connState: 'offline', // 'online' | 'polling' | 'offline'
+    heartbeatTimer: null,
+    lastOppHeartbeat: 0,
+    HEARTBEAT_MS: 3000,
+    OFFLINE_AFTER_MS: 9000,
+};
+
+const mpActive = () => mp.mode !== null && mp.mode !== 'file_inactive';
+
+// ---- UI helpers ----
+function mpToast(msg, ms = 2800) {
+    const el = document.getElementById('mpToast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+function mpSetConn(state) {
+    mp.connState = state;
+    const dot = document.getElementById('mpConnDot');
+    dot.className = state; // 'online' | 'polling' | 'offline'
+}
+
+function mpSetModePill(text) {
+    const pill = document.getElementById('mpModePill');
+    if (text) { pill.textContent = text; pill.classList.add('show'); }
+    else pill.classList.remove('show');
+}
+
+function mpUpdateWaitBanner() {
+    const banner = document.getElementById('mpWaitBanner');
+    if (!mpActive()) { banner.classList.remove('show'); return; }
+    if (!playerTurn && !gameOver) {
+        const oppName = mp.oppName || 'Opponent';
+        banner.textContent = `⏳  ${oppName.toUpperCase()}'s TURN  ⏳`;
+        banner.classList.add('show');
+        // disable interactions
+        document.body.classList.add('mp-waiting');
+    } else {
+        banner.classList.remove('show');
+        document.body.classList.remove('mp-waiting');
+    }
+}
+
+// Make "mp-waiting" block card interactions via CSS inline
+// (we rely on playerTurn=false already doing this, banner is just visual)
+
+function mpUpdateLabels() {
+    if (!mpActive()) return;
+    const myName  = mp.myName  || (mp.myRole  === 'p1' ? 'Player 1' : 'Player 2');
+    const oppName = mp.oppName || (mp.oppRole === 'p1' ? 'Player 1' : 'Player 2');
+    const aiDiscardLabel = document.querySelector('#aiDiscard')?.closest('.labeled-row')?.querySelector('.side-label');
+    if (aiDiscardLabel) aiDiscardLabel.textContent = oppName.slice(0,6) + ' ▽';
+    const aiGoalLabel = document.querySelector('#aiGoalArea')?.closest('.goal-col')?.querySelector('.goal-col-label');
+    if (aiGoalLabel) aiGoalLabel.textContent = oppName + ' Goal';
+    const myGoalLabel = document.querySelector('#playerGoalArea')?.closest('.goal-col')?.querySelector('.goal-col-label');
+    if (myGoalLabel) { myGoalLabel.textContent = '🤚 ' + myName + ' Goal'; myGoalLabel.classList.add('bright'); }
+    mpUpdateScoreBar();
+}
+
+// ---- State serialisation ----
+function mpSerialisePublic() {
+    // Public state (visible to both players)
+    return {
+        center, deck: deck.length,   // opponent sees only deck COUNT
+        recyclePile: recyclePile.length,
+        playerTurn,                  // whose logical turn
+        score,
+        runStackCounts, runMultiplier, currentRunStackIdx,
+    };
+}
+
+function mpSerialiseMyPrivate() {
+    return {
+        myGoal:     playerGoal,
+        myHand:     playerHand,
+        myDiscard:  playerDiscard,
+        myMaxDepth: maxDiscardDepth,
+    };
+}
+
+function mpSerialiseOppPublic() {
+    // What I know about the opponent (public-facing state from their perspective)
+    return {
+        oppGoalCount: aiGoal.length,
+        oppGoalTop:   aiGoal.length ? aiGoal[aiGoal.length-1] : null,
+        oppHandCount: aiHand.length,
+        oppDiscard:   aiDiscard,
+    };
+}
+
+function mpFullStateForOpponent() {
+    mp._sendSeq = (mp._sendSeq || 0) + 1;
+    return {
+        type: 'state',
+        seq: mp._sendSeq,
+        ts: Date.now(),
+        // shared
+        deck, recyclePile, center,
+        score, runStackCounts, runMultiplier, currentRunStackIdx,
+        settings: { tripleMode, wildCardSetting },
+        // p1Turn = true means it is P1's turn in the canonical game
+        p1Turn: mp.myRole === 'p1' ? playerTurn : !playerTurn,
+        p1Hand: mp.myRole === 'p1' ? playerHand : aiHand,
+        p2Hand: mp.myRole === 'p1' ? aiHand     : playerHand,
+        p1Goal: mp.myRole === 'p1' ? playerGoal : aiGoal,
+        p2Goal: mp.myRole === 'p1' ? aiGoal     : playerGoal,
+        p1Discard: mp.myRole === 'p1' ? playerDiscard : aiDiscard,
+        p2Discard: mp.myRole === 'p1' ? aiDiscard     : playerDiscard,
+        p1MaxDepth: mp.myRole === 'p1' ? maxDiscardDepth : Array(5).fill(0),
+        p2MaxDepth: mp.myRole === 'p1' ? Array(5).fill(0) : maxDiscardDepth,
+        myName: mp.myName, oppName: mp.oppName,
+        myScore: score,  // sender's own score so receiver can display it
+        p1StartsFirst: mp.p1StartsFirst,
+    };
+}
+
+function mpApplyRemoteState(msg) {
+    if (msg.settings) {
+        tripleMode      = msg.settings.tripleMode;
+        wildCardSetting = msg.settings.wildCardSetting;
+    }
+    const isP1 = mp.myRole === 'p1';
+    deck              = typeof msg.deck === 'number' ? Array(msg.deck).fill('BACK') : msg.deck;
+    recyclePile       = typeof msg.recyclePile === 'number' ? [] : msg.recyclePile;
+    center            = msg.center;
+    // p1Turn = canonical "is it P1's turn"; translate to local perspective
+    const p1Turn = msg.p1Turn !== undefined ? msg.p1Turn : msg.playerTurn;
+    playerTurn        = isP1 ? p1Turn : !p1Turn;
+    score             = msg.score;
+    runStackCounts    = msg.runStackCounts    || [0,0,0,0,0];
+    runMultiplier     = msg.runMultiplier     || 0;
+    currentRunStackIdx= msg.currentRunStackIdx ?? -1;
+
+    playerHand    = isP1 ? msg.p1Hand    : msg.p2Hand;
+    aiHand        = isP1 ? msg.p2Hand    : msg.p1Hand;
+    playerGoal    = isP1 ? msg.p1Goal    : msg.p2Goal;
+    aiGoal        = isP1 ? msg.p2Goal    : msg.p1Goal;
+    playerDiscard = isP1 ? msg.p1Discard : msg.p2Discard;
+    aiDiscard     = isP1 ? msg.p2Discard : msg.p1Discard;
+    // Merge maxDiscardDepth: keep track locally since host only knows P1's depths
+    const receivedDepth = isP1 ? (msg.p1MaxDepth || Array(5).fill(0)) : (msg.p2MaxDepth || Array(5).fill(0));
+    maxDiscardDepth = receivedDepth.map((v, i) => Math.max(v, maxDiscardDepth[i] || 0));
+
+    if (msg.myName)  mp.oppName = msg.myName;
+    if (msg.oppName) mp.myName  = mp.myName || msg.oppName;
+    if (msg.p1StartsFirst !== undefined) mp.p1StartsFirst = msg.p1StartsFirst;
+    if (msg.myScore !== undefined) {
+        mp.oppScore = msg.myScore;
+        const oppEl = document.getElementById('oppScoreDisplay');
+        if (oppEl) oppEl.textContent = mp.oppScore;
+    }
+
+    gameOver          = false;
+    selectedCard      = null; selectedSource = null;
+    prevHandSnapshot  = [];
+    expandedPlayerDiscards = new Set();
+    expandedAiDiscards     = new Set();
+    flashQueue = []; if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+
+    document.getElementById('scoreDisplay').textContent = score;
+    mpUpdateLabels();
+    mpUpdateWaitBanner();
+    // P1 is host: if it just became P1's turn, refill P1's hand from canonical deck
+    // then rebroadcast so P2 sees the updated deck count
+    if (mp.myRole === 'p1' && playerTurn) {
+        refillHandToFive(playerHand);
+        // Rebroadcast after a short delay so render() has run first
+        setTimeout(() => mpBroadcastState({ type: 'state' }), 50);
+    }
+    if (playerTurn) {
+        const wentFirst = mp.p1StartsFirst !== undefined
+            ? (mp.myRole === 'p1' ? mp.p1StartsFirst : !mp.p1StartsFirst)
+            : true;
+        const isFirstState = (mp.pollSeq <= 1);
+        if (isFirstState && wentFirst) {
+            setStatus('You go first — lowest goal card!');
+        } else {
+            setStatus('Your turn — drag or click cards to play');
+        }
+        document.getElementById('aiThinking').classList.remove('show');
+    } else {
+        const oppName = mp.oppName || 'Opponent';
+        const isFirstState = (mp.pollSeq <= 1);
+        if (isFirstState) {
+            setStatus(`${oppName} goes first — lowest goal card.`);
+        } else {
+            setStatus(`${oppName}'s turn…`);
+        }
+        document.getElementById('aiThinking').classList.remove('show');
+    }
+    render();
+    checkWin();
+}
+
+// ---- Send helpers (defined further below with fromRole stamping) ----
+
+function mpSendHeartbeat() {
+    if (!mpActive() || mp.mode === 'file') return;
+    const hb = { type: 'heartbeat', role: mp.myRole, ts: Date.now(), name: mp.myName };
+    if (mp.mode === 'broadcast' && mp.channel) mp.channel.postMessage(hb);
+    else if (mp.mode === 'storage') {
+        localStorage.setItem(`sm_room_${mp.roomKey}_hb_${mp.myRole}`, JSON.stringify(hb));
+    }
+}
+
+function mpCheckOppHeartbeat() {
+    if (!mpActive() || mp.mode === 'file') return;
+    const age = Date.now() - mp.lastOppHeartbeat;
+    if (mp.lastOppHeartbeat === 0) { mpSetConn('polling'); return; }
+    if (age < mp.OFFLINE_AFTER_MS) mpSetConn('online');
+    else mpSetConn('offline');
+}
+
+// ---- What happens when I end my turn ----
+function mpOnMyTurnEnd() {
+    playerTurn = false;
+    // P1 is host — manages deck draws for BOTH players
+    if (mp.myRole === 'p1') {
+        // Refill opponent's (aiHand) to 5 before sending
+        refillHandToFive(aiHand);
+    }
+    render();
+    mpBroadcastState({ type: 'state' });
+    mpUpdateWaitBanner();
+    const oppName = mp.oppName || 'Opponent';
+    setStatus(`${oppName}'s turn…`);
+    if (mp.mode === 'file') {
+        mpFilePanelShowLoad();
+    }
+}
+
+// ---- What happens when opponent ends their turn & we receive state ----
+function mpOnReceiveState(msg) {
+    // Stale guard: reject messages we've already processed, but always allow first message
+    if (msg.seq !== undefined && mp.pollSeq > 0 && msg.seq <= mp.pollSeq) return;
+    mp.pollSeq = msg.seq || (mp.pollSeq + 1);
+    mpApplyRemoteState(msg);
+    if (playerTurn && !gameOver) {
+        mpToast('Your turn!');
+        playTone(660, 'sine', 0.2, 0.25);
+    }
+}
+
+function mpOnReceiveHeartbeat(hb) {
+    if (hb.role !== mp.myRole) {
+        mp.lastOppHeartbeat = Date.now();
+        if (hb.name && !mp.oppName) mp.oppName = hb.name;
+        mpCheckOppHeartbeat();
+        mpUpdateLabels();
+    }
+}
+
+// ============================================================
+//  TRANSPORT 1: BroadcastChannel
+// ============================================================
+function mpBroadcastHost() {
+    const name = document.getElementById('mpBcName').value.trim() || 'Player 1';
+    mp.myName = name; mp.myRole = 'p1'; mp.oppRole = 'p2';
+    mp.roomKey = Math.random().toString(36).slice(2,7).toUpperCase();
+    mp.mode = 'broadcast';
+    mp.channel = new BroadcastChannel(mp.roomKey);
+    mp.channel.onmessage = e => mpHandleMessage(e.data);
+    // Show code in the lobby UI
+    const codeDisplay = document.getElementById('mpBcCodeDisplay');
+    const codeRow = document.getElementById('mpBcCodeRow');
+    if (codeDisplay) codeDisplay.value = mp.roomKey;
+    if (codeRow) codeRow.style.display = 'block';
+    document.getElementById('mpBcStatus').innerHTML = `<span class="mp-ok">Waiting for opponent to join…</span>`;
+    mpSetModePill('BROADCAST');
+    document.getElementById('mpBtn').style.display = 'inline-block';
+    deal();
+    mpStartHeartbeat();
+    // Lobby stays open so host can share the code; game runs behind it
+    mpToast('Game started — share the code, then close this panel');
+}
+
+function mpBroadcastJoin() {
+    const name = document.getElementById('mpBcName').value.trim() || 'Player 2';
+    const codeEl = document.getElementById('mpBcJoinCode');
+    const code = codeEl ? codeEl.value.trim().toUpperCase() : '';
+    if (!code) {
+        document.getElementById('mpBcStatus').innerHTML = '<span class="mp-error">Enter the channel code from the Host tab.</span>';
+        return;
+    }
+    mp.myName = name; mp.myRole = 'p2'; mp.oppRole = 'p1';
+    mp.roomKey = code;
+    mp.mode = 'broadcast';
+    mp.channel = new BroadcastChannel(mp.roomKey);
+    mp.channel.onmessage = e => mpHandleMessage(e.data);
+    document.getElementById('mpBcStatus').innerHTML = `<span class="mp-ok">Joined channel <strong>${mp.roomKey}</strong> — requesting state from host…</span>`;
+    mpSetModePill('BROADCAST');
+    document.getElementById('mpBtn').style.display = 'inline-block';
+    closeMpLobby();
+    mp.channel.postMessage({ type: 'requestState', role: 'p2', name: mp.myName });
+    mpStartHeartbeat();
+    mpToast('Joined — waiting for host…');
+}
+
+// ============================================================
+//  TRANSPORT 2: localStorage polling
+// ============================================================
+function mpGenRoom() {
+    const code = Math.random().toString(36).slice(2,8).toUpperCase();
+    document.getElementById('mpRoomCode').value = code;
+}
+
+function mpStorageHost() {
+    const name = document.getElementById('mpStoreName').value.trim() || 'Player 1';
+    const room = document.getElementById('mpRoomCode').value.trim().toUpperCase();
+    if (!room) { document.getElementById('mpStoreStatus').innerHTML = '<span class="mp-error">Enter a room code first.</span>'; return; }
+    mp.myName = name; mp.myRole = 'p1'; mp.oppRole = 'p2';
+    mp.roomKey = room; mp.mode = 'storage';
+    document.getElementById('mpStoreStatus').innerHTML =
+        `<span class="mp-ok">Room <strong>${room}</strong> ready — share this code with your opponent, then close this panel.</span>`;
+    mpSetModePill('ROOM · ' + room);
+    document.getElementById('mpBtn').style.display = 'inline-block';
+    localStorage.setItem(`sm_room_${room}_host`, JSON.stringify({ name, ts: Date.now() }));
+    deal();
+    mpStartStorage();
+    mpStartHeartbeat();
+    mpToast('Room ' + room + ' open — share the code!');
+}
+
+function mpStorageJoin() {
+    const name = document.getElementById('mpStoreName').value.trim() || 'Player 2';
+    const room = document.getElementById('mpRoomCode').value.trim().toUpperCase();
+    if (!room) { document.getElementById('mpStoreStatus').innerHTML = '<span class="mp-error">Enter the room code from your opponent.</span>'; return; }
+    mp.myName = name; mp.myRole = 'p2'; mp.oppRole = 'p1';
+    mp.roomKey = room; mp.mode = 'storage';
+    document.getElementById('mpStoreStatus').innerHTML = `<span class="mp-ok">Joined room <strong>${room}</strong> — waiting for host's state…</span>`;
+    mpSetModePill('ROOM · ' + room);
+    document.getElementById('mpBtn').style.display = 'inline-block';
+    localStorage.setItem(`sm_room_${room}_join`, JSON.stringify({ name, ts: Date.now() }));
+    closeMpLobby();
+    mpStartStorage();
+    mpStartHeartbeat();
+    mpToast('Joined room ' + room + ' — waiting for host…');
+}
+
+function mpStartStorage() {
+    if (mp.pollTimer) clearInterval(mp.pollTimer);
+    mp.pollTimer = setInterval(mpPollStorage, 800);
+    mpPollStorage();
+}
+
+function mpPollStorage() {
+    if (mp.mode !== 'storage') return;
+    // Check for join notification (host side only)
+    if (mp.myRole === 'p1') {
+        const joinRaw = localStorage.getItem(`sm_room_${mp.roomKey}_join`);
+        if (joinRaw) {
+            try {
+                const j = JSON.parse(joinRaw);
+                if (j.name && !mp.oppName) {
+                    mp.oppName = j.name; mpUpdateLabels();
+                    mpToast(j.name + ' joined!');
+                    // Immediately broadcast full state
+                    mpBroadcastState({ type: 'state' });
+                }
+            } catch(e) {}
+        }
+    }
+    // Poll for incoming state
+    const stateKey = `sm_room_${mp.roomKey}_state`;
+    const raw = localStorage.getItem(stateKey);
+    if (!raw) return;
+    try {
+        const msg = JSON.parse(raw);
+        // Only process messages from the OTHER player
+        if (msg.fromRole && msg.fromRole === mp.myRole) return;
+        mpHandleMessage(msg);
+    } catch(e) {}
+    // Poll opponent heartbeat
+    const hbKey = `sm_room_${mp.roomKey}_hb_${mp.oppRole}`;
+    const hbRaw = localStorage.getItem(hbKey);
+    if (hbRaw) {
+        try { mpOnReceiveHeartbeat(JSON.parse(hbRaw)); } catch(e) {}
+    }
+}
+
+// ---- mpBroadcastState: stamps fromRole so recipients can filter their own messages ----
+function mpBroadcastState(extra = {}) {
+    if (!mpActive()) return;
+    const msg = { ...mpFullStateForOpponent(), fromRole: mp.myRole, ...extra };
+    if (mp.mode === 'broadcast' && mp.channel) {
+        mp.channel.postMessage(msg);
+    } else if (mp.mode === 'storage') {
+        const key = `sm_room_${mp.roomKey}_state`;
+        localStorage.setItem(key, JSON.stringify(msg));
+    }
+}
+
+// ============================================================
+//  HEARTBEAT
+// ============================================================
+function mpStartHeartbeat() {
+    if (mp.heartbeatTimer) clearInterval(mp.heartbeatTimer);
+    mp.heartbeatTimer = setInterval(() => {
+        mpSendHeartbeat();
+        mpCheckOppHeartbeat();
+    }, mp.HEARTBEAT_MS);
+    mpSendHeartbeat();
+}
+
+// ============================================================
+//  MESSAGE ROUTER
+// ============================================================
+function mpHandleMessage(msg) {
+    if (!msg || !msg.type) return;
+    switch (msg.type) {
+        case 'heartbeat':
+            mpOnReceiveHeartbeat(msg); break;
+        case 'state':
+        case 'win':
+            mpOnReceiveState(msg); break;
+        case 'requestState':
+            // P2 asked for state resend — only host responds
+            if (mp.myRole === 'p1') {
+                if (msg.name) mp.oppName = msg.name;
+                mpUpdateLabels();
+                mpBroadcastState({ type: 'state' });
+            }
+            break;
+        case 'chat': // future hook
+            break;
+    }
+}
+
+// ============================================================
+//  TRANSPORT 3: File swap
+// ============================================================
+function mpFileHost() {
+    const name = document.getElementById('mpFileName').value.trim() || 'Player 1';
+    mp.myName = name; mp.myRole = 'p1'; mp.oppRole = 'p2';
+    mp.mode = 'file';
+    document.getElementById('mpFileStatus').innerHTML = '<span class="mp-ok">You are Player 1. Hosting — will deal and save file after closing.</span>';
+    mpSetModePill('FILE SWAP');
+    document.getElementById('mpBtn').style.display = 'inline-block';
+    closeMpLobby();
+    deal();
+    // After deal, it's p1's turn; show save button after p1 acts
+    mpFilePanelShowPlay();
+    mpToast('You are Player 1 — play your turn, then save & send the file.');
+}
+
+function mpFileLoadClick() {
+    document.getElementById('mpFileLoadInput').click();
+}
+
+function mpFileLoadPanelClick() {
+    document.getElementById('mpFilePanelInput').click();
+}
+
+function mpFileLoad(e) {
+    const file = (e.target.files || [])[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+        try {
+            const msg = JSON.parse(evt.target.result);
+            if (!msg.type) throw new Error('Not a valid game file.');
+            // Auto-detect our role from the file
+            if (!mp.myRole) {
+                // If file says playerTurn for p1 but we haven't set role, we must be p2
+                const nameFld = document.getElementById('mpFileName');
+                const storedName = (nameFld && nameFld.value.trim()) || localStorage.getItem('sm_mp_myname') || '';
+                mp.myName  = storedName || 'Player 2';
+                mp.myRole  = msg.fromRole === 'p1' ? 'p2' : 'p1';
+                mp.oppRole = msg.fromRole || 'p1';
+                mp.mode = 'file';
+                mpSetModePill('FILE SWAP');
+                document.getElementById('mpBtn').style.display = 'inline-block';
+            }
+            closeMpLobby();
+            mpOnReceiveState(msg);
+            if (playerTurn) {
+                mpFilePanelShowPlay();
+                mpToast('File loaded — your turn!');
+            } else {
+                mpFilePanelShowLoad();
+                mpToast('File loaded — waiting for opponent.');
+            }
+        } catch(err) {
+            const statusEl = document.getElementById('mpFileStatus') || document.getElementById('mpStoreStatus');
+            if (statusEl) statusEl.innerHTML = `<span class="mp-error">Could not load: ${err.message}</span>`;
+            else alert('Could not load file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function mpFileSaveAndSend() {
+    const msg = { ...mpFullStateForOpponent(), fromRole: mp.myRole };
+    const blob = new Blob([JSON.stringify(msg, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `spite-malice-${mp.roomKey || 'game'}-turn.spm2`;
+    a.click();
+    URL.revokeObjectURL(url);
+    mpToast('File saved — send it to your opponent!');
+}
+
+function mpFilePanelShowPlay() {
+    const outer = document.getElementById('mpFilePanelOuter');
+    outer.classList.add('show');
+    document.getElementById('mpFileSaveBtn').style.display = mp.mode === 'file' && !playerTurn ? 'inline-block' : 'none';
+    document.getElementById('mpFileLoadBtn').style.display = !playerTurn ? 'none' : 'inline-block';
+    document.getElementById('mpFilePanelTurn').textContent = playerTurn ? 'Your turn' : 'Opponent\'s turn';
+}
+
+function mpFilePanelShowLoad() {
+    const outer = document.getElementById('mpFilePanelOuter');
+    outer.classList.add('show');
+    document.getElementById('mpFileSaveBtn').style.display = 'inline-block';
+    document.getElementById('mpFileLoadBtn').style.display = 'inline-block';
+    document.getElementById('mpFilePanelTurn').textContent = playerTurn ? 'Your turn' : 'Waiting for opponent file';
+}
+
+function mpUpdateFilePanel() {
+    if (mp.mode !== 'file') return;
+    document.getElementById('mpFileSaveBtn').style.display = !playerTurn ? 'inline-block' : 'none';
+    document.getElementById('mpFileLoadBtn').style.display = !playerTurn ? 'inline-block' : 'none';
+    document.getElementById('mpFilePanelTurn').textContent = playerTurn ? 'Your turn' : 'Send file · then load reply';
+}
+
+function mpFileExitMode() {
+    mpExitMultiplayer();
+}
+
+// ============================================================
+//  LOBBY UI
+// ============================================================
+function openMpLobby() {
+    document.getElementById('mpModeSelect').style.display = 'block';
+    document.getElementById('mpBroadcastSetup').style.display = 'none';
+    document.getElementById('mpStorageSetup').style.display = 'none';
+    document.getElementById('mpFileSetup').style.display = 'none';
+    document.getElementById('mpMainDivider').style.display = 'block';
+    document.getElementById('mpLobby').classList.add('show');
+}
+
+function closeMpLobby() {
+    document.getElementById('mpLobby').classList.remove('show');
+}
+
+function mpSelectMode(mode) {
+    document.getElementById('mpModeSelect').style.display = 'none';
+    document.getElementById('mpMainDivider').style.display = 'none';
+    if (mode === 'solo') { mpExitMultiplayer(); closeMpLobby(); return; }
+    const ids = { broadcast:'mpBroadcastSetup', storage:'mpStorageSetup', file:'mpFileSetup' };
+    Object.values(ids).forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById(ids[mode]).style.display = 'block';
+}
+
+function mpBack() {
+    document.getElementById('mpModeSelect').style.display = 'block';
+    document.getElementById('mpMainDivider').style.display = 'block';
+    document.getElementById('mpBroadcastSetup').style.display = 'none';
+    document.getElementById('mpStorageSetup').style.display = 'none';
+    document.getElementById('mpFileSetup').style.display = 'none';
+}
+
+// ============================================================
+//  EXIT MULTIPLAYER
+// ============================================================
+function mpExitMultiplayer() {
+    if (mp.channel)        { mp.channel.close(); mp.channel = null; }
+    if (mp.pollTimer)      { clearInterval(mp.pollTimer); mp.pollTimer = null; }
+    if (mp.heartbeatTimer) { clearInterval(mp.heartbeatTimer); mp.heartbeatTimer = null; }
+    mp.mode = null; mp.myRole = null; mp.oppRole = null;
+    mp.myName = ''; mp.oppName = ''; mp.roomKey = '';
+    mp.connState = 'offline'; mp.lastOppHeartbeat = 0;
+    mp.pollSeq = 0; mp._sendSeq = 0; mp.p1StartsFirst = undefined;
+    document.getElementById('mpConnDot').className = '';
+    document.getElementById('mpModePill').classList.remove('show');
+    document.getElementById('mpWaitBanner').classList.remove('show');
+    document.getElementById('mpFilePanelOuter').classList.remove('show');
+    document.getElementById('mpBtn').style.display = 'none';
+    document.body.classList.remove('mp-waiting');
+    // Restore labels
+    const aiDiscardLabel = document.querySelector('#aiDiscard')?.closest('.labeled-row')?.querySelector('.side-label');
+    if (aiDiscardLabel) aiDiscardLabel.textContent = 'AI ▽';
+    const aiGoalLabel = document.querySelector('#aiGoalArea')?.closest('.goal-col')?.querySelector('.goal-col-label');
+    if (aiGoalLabel) aiGoalLabel.textContent = 'AI Goal';
+    const myGoalLabel = document.querySelector('#playerGoalArea')?.closest('.goal-col')?.querySelector('.goal-col-label');
+    if (myGoalLabel) { myGoalLabel.textContent = '🤚 Goal'; }
+    mp.oppScore = 0;
+    mpUpdateScoreBar();
+    mpToast('Returned to single-player (vs AI)');
+    deal();
+}
+
+function mpUpdateScoreBar() {
+    const oppItem = document.getElementById('oppScoreItem');
+    const oppLabel = document.getElementById('oppScoreLabel');
+    const myLabel = document.getElementById('scoreLabel');
+    if (!oppItem) return;
+    if (mpActive()) {
+        oppItem.style.display = 'flex';
+        const myName  = mp.myName  || (mp.myRole === 'p1' ? 'P1' : 'P2');
+        const oppName = mp.oppName || (mp.oppRole === 'p1' ? 'P1' : 'P2');
+        if (myLabel)  myLabel.textContent  = myName.slice(0, 6);
+        if (oppLabel) oppLabel.textContent = oppName.slice(0, 6);
+        const oppEl = document.getElementById('oppScoreDisplay');
+        if (oppEl) oppEl.textContent = mp.oppScore;
+    } else {
+        oppItem.style.display = 'none';
+        if (myLabel) myLabel.textContent = 'Score';
+    }
+}
+function mpCopyCode(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.select(); el.setSelectionRange(0, 99);
+    try { document.execCommand('copy'); mpToast('Code copied!'); }
+    catch(e) { try { navigator.clipboard.writeText(el.value).then(() => mpToast('Code copied!')); } catch(e2) {} }
+}
+
+// P2 tracks their own maxDiscardDepth locally (P1 sends zeros for it since P1 doesn't know)
+// We merge on receive: keep whichever is higher
+function mpMergeMaxDepth(received) {
+    if (!received) return;
+    for (let i = 0; i < 5; i++) {
+        maxDiscardDepth[i] = Math.max(maxDiscardDepth[i] || 0, received[i] || 0);
+    }
+}
+
+// ---- Expose MPlobby button in settings always ----
+// (already done in HTML)
+
+// ---- On page load: check if we're re-joining via storage ----
+window.addEventListener('load', () => {
+    // Show the MP lobby button in top-bar — hidden until in MP mode
+    // (handled by inline style)
+    // Restore mp name from localStorage
+    const saved = localStorage.getItem('sm_mp_myname');
+    if (saved) {
+        ['mpBcName','mpStoreName','mpFileName'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.value) el.value = saved;
+        });
+    }
+    // Persist name on change
+    ['mpBcName','mpStoreName','mpFileName'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => localStorage.setItem('sm_mp_myname', el.value.trim()));
+    });
+});
+
+// ============================================================
+//  INIT
+// ============================================================
+loadBestScore();
+loadBestRun();
+runWordEl = document.getElementById("runWord");
+deal();
+</script>
+</body>
+</html>

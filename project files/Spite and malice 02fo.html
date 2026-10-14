@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spite & Malice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Fonts loaded via <link> tags in <head> for non-blocking render */
+
+:root {
+    --felt: #1a5c1a; --gold: #d4a017; --gold-light: #f0c040;
+    --card-white: #faf8f4; --red: #c41e3a; --black: #1a1a1a;
+    --drag-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+* { box-sizing: border-box; }
+body {
+    background-color: var(--felt);
+    background-image: radial-gradient(ellipse at 30% 20%, rgba(0,80,0,0.25) 0%, transparent 55%);
+    color: white; font-family: 'Crimson Pro', serif;
+    display: flex; flex-direction: column; align-items: center;
+    margin: 0; padding: 6px 8px 14px; min-height: 100vh; user-select: none;
+}
+.suit-large { display: inline-block; transform: scale(1.2); transform-origin: center; line-height: 1; }
+
+/* Top bar */
+.top-bar { width: 100%; max-width: 550px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+h1.game-title { font-family: 'Cinzel', serif; font-size: 22px; letter-spacing: 4px; color: var(--gold); text-shadow: 0 2px 8px rgba(0,0,0,0.5); margin: 0; text-transform: uppercase; flex: 1; text-align: center; }
+.icon-btn { background: none; border: none; color: var(--gold-light); font-size: 20px; cursor: pointer; padding: 4px 7px; border-radius: 4px; line-height: 1; flex-shrink: 0; transition: background 0.15s; }
+.icon-btn:hover { background: rgba(212,160,23,0.15); }
+
+/* Score bar */
+.score-bar { display: flex; gap: 26px; margin-bottom: 9px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 1px; }
+.score-item { display: flex; flex-direction: column; align-items: center; color: #e8d060; }
+.score-value { font-size: 20px; color: var(--gold-light); line-height: 1.1; font-weight: 700; }
+
+/* Floating run word — hovers above active center stack, rises and grows with each card */
+#runWord {
+    position: fixed;
+    pointer-events: none !important;
+    z-index: 8500;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: 6px;
+    white-space: nowrap;
+    transform-origin: center bottom;
+    display: none;
+    will-change: transform;
+    touch-action: none;
+}
+/* Animation only fires when .active is present — avoids creating stacking context when hidden */
+#runWord.active {
+    display: block;
+    animation: runWobble 2.8s ease-in-out infinite;
+}
+
+/* Settle flash — quick pulse when run is cashed out */
+#runWord.active.settle {
+    animation: runSettle 0.7s ease-out forwards !important;
+}
+@keyframes runSettle {
+    0%   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+    60%  { opacity: 0.6; transform: translateX(-50%) scale(1.3) translateY(-30px); }
+    100% { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-60px); }
+}
+
+@keyframes runWobble {
+    0%   { transform: translateX(-50%) translateY(0px)   rotate(-1deg); }
+    25%  { transform: translateX(calc(-50% + 4px))  translateY(-3px)  rotate(1.2deg); }
+    50%  { transform: translateX(calc(-50% - 3px))  translateY(-5px)  rotate(-0.8deg); }
+    75%  { transform: translateX(calc(-50% + 5px))  translateY(-2px)  rotate(1.5deg); }
+    100% { transform: translateX(-50%) translateY(0px)   rotate(-1deg); }
+}
+
+/* Labeled rows */
+.labeled-row { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; width: 100%; max-width: 550px; }
+.side-label { writing-mode: vertical-rl; transform: rotate(180deg); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(212,160,23,0.7); white-space: nowrap; flex-shrink: 0; padding: 2px 0; }
+.cards-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-start; contain: layout; }
+
+/* Goal row */
+#goalContainer { display: flex; gap: 22px; margin-bottom: 9px; align-items: flex-start; justify-content: center; flex-wrap: nowrap; }
+.goal-col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.goal-col-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(212,160,23,0.7); white-space: nowrap; }
+.goal-col-label.bright { font-size: 12px; color: #e8d060; letter-spacing: 3px; font-weight: 700; }
+
+/* Action buttons */
+#actionButtons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 36px; margin-bottom: 4px; }
+button { padding: 6px 14px; border-radius: 4px; border: 1px solid rgba(212,160,23,0.4); background: linear-gradient(to bottom, rgba(212,160,23,0.25), rgba(212,160,23,0.1)); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; }
+button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgba(212,160,23,0.25)); box-shadow: 0 0 10px rgba(212,160,23,0.3); }
+
+/* Status */
+#statusMsg { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 1px; color: rgba(212,160,23,0.7); margin-bottom: 6px; min-height: 18px; text-align: center; }
+#aiThinking { display: none; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: rgba(255,100,100,0.7); }
+#aiThinking.show { display: block; animation: thinking 1s ease-in-out infinite alternate; }
+@keyframes thinking { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* Divider */
+.divider { width: 100%; max-width: 550px; height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 4px 0 6px; }
+
+/* Cards */
+.card, .top-card { width: 64px; height: 92px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; background-color: var(--card-white); color: var(--black); font-weight: bold; cursor: grab; box-shadow: 2px 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 15px; flex-shrink: 0; position: relative; overflow: hidden; padding: 0; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+/* card texture removed for perf on older devices */
+.card:hover, .top-card:hover { transform: translateY(-3px) scale(1.03); box-shadow: 3px 8px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8); z-index: 10; }
+.card.selected { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 3px rgba(212,160,23,0.5), 3px 8px 16px rgba(0,0,0,0.5); transform: translateY(-5px) scale(1.05); }
+.card.dragging, .top-card.dragging { opacity: 0.4; cursor: grabbing; transform: none !important; }
+.drop-zone-active { outline: 2px dashed var(--gold) !important; background-color: rgba(212,160,23,0.15) !important; box-shadow: 0 0 0 4px rgba(212,160,23,0.4), inset 0 0 18px rgba(212,160,23,0.2) !important; animation: pulse-drop 0.8s ease-in-out infinite alternate; }
+@keyframes pulse-drop { from { outline-color: rgba(212,160,23,0.5); } to { outline-color: rgba(212,160,23,1); } }
+.drop-zone-hover { outline: 2px solid #fff !important; background-color: rgba(255,255,255,0.15) !important; transform: scale(1.05); }
+.card-corner { position: absolute; top: 2px; left: 3px; font-size: 9px; line-height: 1.1; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
+.card-pips { display: flex; flex-direction: column; justify-content: space-around; align-items: center; width: 100%; height: 100%; padding: 16px 4px; font-size: 9px; }
+.pip-row { display: flex; justify-content: space-around; width: 100%; }
+.card-center-label { font-size: 15px; font-weight: bold; text-align: center; }
+.red { color: var(--red); } .black { color: #1a1a1a; }
+.stack-wrap { display: flex; flex-direction: column; align-items: center; width: 64px; position: relative; padding-bottom: 14px; }
+.goal-wrap { display: flex; flex-direction: column; align-items: center; width: 64px; position: relative; padding-bottom: 14px; }
+.stack-layers { position: absolute; top: 0; left: 0; width: 64px; height: 92px; pointer-events: none; }
+.stack-layer { position: absolute; width: 64px; height: 92px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.35); box-sizing: border-box; }
+.stack-layer:last-child { box-shadow: 2px 4px 8px rgba(0,0,0,0.45); }
+.stack-empty { width: 64px; height: 92px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 1px; }
+.goal-card { width: 64px; height: 92px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; background-color: var(--card-white); color: var(--black); font-weight: bold; box-shadow: 2px 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 15px; cursor: pointer; flex-shrink: 0; position: relative; overflow: hidden; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.goal-card:hover { transform: translateY(-3px); box-shadow: 3px 8px 16px rgba(0,0,0,0.5); }
+.draw-card { background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%) !important; color: var(--gold) !important; font-family: 'Cinzel', serif !important; font-size: 9px !important; text-align: center; line-height: 1.4; letter-spacing: 1px; box-shadow: 2px 2px 8px rgba(0,0,0,0.6), inset 0 0 20px rgba(100,50,200,0.2) !important; border: 1px solid rgba(212,160,23,0.3) !important; }
+
+/* Score flash */
+.score-flash { position: fixed; pointer-events: none; z-index: 8000; font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; color: var(--gold-light); text-shadow: 0 0 12px var(--gold); animation: scoreFloat 1.1s ease-out forwards; }
+.score-flash.run-flash { font-size: 28px; color: #ff9900; text-shadow: 0 0 20px #ffaa00, 0 0 40px #ff6600; }
+@keyframes scoreFloat { 0% { opacity: 1; transform: translateY(0) scale(1); } 70% { opacity: 1; transform: translateY(-44px) scale(1.1); } 100% { opacity: 0; transform: translateY(-70px) scale(0.9); } }
+
+/* Drag ghost */
+#dragGhost { position: fixed; pointer-events: none; z-index: 9999; display: none; border-radius: 6px; }
+
+/* Win overlay */
+#winOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; }
+#winOverlay.show { display: flex; }
+.win-box { background: linear-gradient(135deg, #1a1a2e, #2d1b69); border: 2px solid var(--gold); border-radius: 12px; padding: 40px 60px; text-align: center; box-shadow: 0 0 60px rgba(212,160,23,0.4); }
+.win-box h2 { font-family: 'Cinzel', serif; font-size: 32px; color: var(--gold-light); text-shadow: 0 0 20px var(--gold); margin: 0 0 6px; }
+.win-box .win-score { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold); margin: 0 0 4px; min-height: 24px; }
+.win-box p { color: rgba(255,255,255,0.7); font-size: 15px; margin: 0 0 20px; }
+.win-box button { font-size: 13px; padding: 10px 28px; }
+
+/* Settings overlay */
+#settingsOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
+#settingsOverlay.show { display: flex; }
+.settings-box { background: linear-gradient(135deg, #1a1a2e, #162a16); border: 2px solid var(--gold); border-radius: 12px; padding: 32px 44px; min-width: 280px; box-shadow: 0 0 60px rgba(212,160,23,0.3); }
+.settings-box h2 { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold-light); margin: 0 0 22px; text-align: center; letter-spacing: 3px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(212,160,23,0.8); letter-spacing: 1px; }
+.toggle-btn { background: rgba(212,160,23,0.15); border: 1px solid rgba(212,160,23,0.4); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; padding: 5px 14px; border-radius: 4px; cursor: pointer; transition: all 0.15s; min-width: 60px; }
+.toggle-btn:hover { background: rgba(212,160,23,0.3); }
+.toggle-btn.on { background: rgba(212,160,23,0.35); color: #fff; }
+.settings-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 20px 0; }
+.hs-title { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: rgba(212,160,23,0.6); text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+.hs-list { list-style: none; padding: 0; margin: 0 0 14px; }
+.hs-list li { display: flex; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(255,255,255,0.75); padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.hs-list li:first-child { color: var(--gold-light); }
+.hs-list li:last-child { border-bottom: none; }
+.hs-list li span:last-child { color: var(--gold-light); }
+.hs-empty { font-family: 'Cinzel', serif; font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 14px; }
+.scoring-note { font-family: 'Crimson Pro', serif; font-size: 11px; color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 16px; line-height: 1.5; }
+
+/* BLOCKED flash */
+#blockedFlash { display: none; position: fixed; inset: 0; z-index: 9000; justify-content: center; align-items: center; pointer-events: none; }
+#blockedFlash.show { display: flex; }
+#blockedFlash span { font-family: 'Cinzel', serif; font-size: clamp(36px, 10vw, 64px); font-weight: 700; letter-spacing: 6px; color: #ff4444; text-shadow: 0 0 20px rgba(255,60,60,0.8), 0 0 50px rgba(255,0,0,0.4), 0 2px 4px rgba(0,0,0,0.9); }
+#blockedFlash.show span { animation: blockedAnim 1s ease-out forwards; }
+@keyframes blockedAnim { 0% { opacity: 0; transform: scale(0.7); } 20% { opacity: 1; transform: scale(1.08); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95); } }
+
+
+
+@keyframes cardDeal { from { opacity: 0; transform: translateY(-20px) scale(0.8) rotate(-5deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); } }
+.card-deal { animation: cardDeal 0.3s ease-out both; }
+
+
+/* Running stack glow — simplified for older device GPU perf */
+.run-stack-glow {
+    outline-offset: 3px;
+    z-index: 5;
+    position: relative;
+    outline: 2px solid rgba(255,180,0,0.7) !important;
+    box-shadow:
+        0 0 12px 2px rgba(255,200,80,0.45),
+        0 0 24px 4px rgba(255,100,0,0.3) !important;
+    animation: runStackFlicker 1.8s ease-in-out infinite !important;
+}
+/* Flame wisp — opacity+transform only, no filter:blur or mix-blend-mode */
+.run-stack-glow::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 15%;
+    width: 70%;
+    height: 18px;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(255,140,0,0.55), rgba(255,60,0,0.3), transparent);
+    border-radius: 60% 60% 0 0 / 80% 80% 0 0;
+    animation: flameWisp 1.1s ease-in-out infinite alternate;
+    z-index: 6;
+    opacity: 0.8;
+}
+/* Smoke wisp removed — filter:blur in pseudo-element is very costly on older devices */
+.run-stack-glow::before { display: none; }
+@keyframes flameWisp {
+    0%   { transform: scaleX(1)    scaleY(1);    opacity: 0.6; }
+    50%  { transform: scaleX(0.88) scaleY(1.15); opacity: 1;   }
+    100% { transform: scaleX(1.08) scaleY(0.9);  opacity: 0.7; }
+}
+@keyframes runStackFlicker {
+    0%   { opacity: 1;    }
+    15%  { opacity: 0.88; }
+    30%  { opacity: 1;    }
+    50%  { opacity: 0.93; }
+    70%  { opacity: 1;    }
+    85%  { opacity: 0.9;  }
+    100% { opacity: 1;    }
+}
+
+/* ── Particles ── */
+#particleCanvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 7000;
+    width: 100%;
+    height: 100%;
+}
+</style>
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+<div class="top-bar">
+    <button class="icon-btn" id="muteBtn" onclick="toggleMute()" title="Mute">🔊</button>
+    <h1 class="game-title">Spite &amp; Malice</h1>
+    <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
+</div>
+
+<div class="score-bar">
+    <div class="score-item"><span class="score-value" id="scoreDisplay">0</span>Score</div>
+    <div class="score-item"><span class="score-value" id="highScoreDisplay">0</span>Best</div>
+    <div class="score-item"><span class="score-value" id="bestRunDisplay">×1</span>Best Run</div>
+</div>
+
+<div id="aiThinking">AI is thinking…</div>
+<div id="statusMsg">Your turn — drag or click cards to play</div>
+
+<div class="labeled-row">
+    <span class="side-label">AI ▽</span>
+    <div class="cards-row" id="aiDiscard"></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="labeled-row">
+    <span class="side-label">Center ▶</span>
+    <div class="cards-row" id="center"></div>
+</div>
+
+<div class="divider"></div>
+
+<div id="goalContainer">
+    <div class="goal-col"><span class="goal-col-label">AI Goal</span><div id="aiGoalArea"></div></div>
+    <div class="goal-col"><span class="goal-col-label">Deck</span><div id="drawDeckArea"></div></div>
+    <div class="goal-col"><span class="goal-col-label bright">🤚 Goal</span><div id="playerGoalArea"></div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="labeled-row">
+    <span class="side-label">Your ▽</span>
+    <div class="cards-row" id="playerDiscard"></div>
+</div>
+
+<div class="labeled-row">
+    <span class="side-label">Hand</span>
+    <div class="cards-row" id="hand"></div>
+</div>
+
+<div id="actionButtons"></div>
+
+<div id="blockedFlash"><span>BLOCKED!!</span></div>
+<!-- floating run word — positioned dynamically over center deck area -->
+<div id="runWord"></div>
+<div id="dragGhost" class="card"></div>
+
+<div id="winOverlay">
+    <div class="win-box">
+        <h2 id="winText">YOU WIN!</h2>
+        <div class="win-score" id="winScore"></div>
+        <p id="winSub">Congratulations!</p>
+        <button onclick="startNewGame()">Play Again</button>
+    </div>
+</div>
+
+<div id="settingsOverlay">
+    <div class="settings-box">
+        <h2>Settings</h2>
+        <div class="settings-row">Sound <button class="toggle-btn on" id="soundToggle" onclick="toggleMute()">On</button></div>
+        <div class="settings-row">Decks &amp; Goal <button class="toggle-btn" id="deckToggle" onclick="toggleTripleMode()">2 Decks</button></div>
+        <div style="font-family:'Crimson Pro',serif;font-size:10px;color:rgba(255,255,255,0.3);text-align:right;margin:-10px 0 14px;">takes effect next game</div>
+        <div class="settings-divider"></div>
+        <div class="hs-title"><span id="hsModeLabel">2-Deck Scores</span></div>
+        <ul class="hs-list" id="hsList"></ul>
+        <div class="scoring-note">Center play +1 &nbsp;·&nbsp; Block AI +55<br>Goal play +70 &nbsp;·&nbsp; Center clear +45 &nbsp;·&nbsp; Win +300<br>Discard clear: +10 (2) · +20 (3) · +25 (4+)<br>Run bonus: 2nd card on a stack starts the run<br>×level every 3 cards · Block AI: +1 level<br>Discard clear: +1 or +2 levels<br>Multiplier: 1→2→4→8→16→32→64→128×</div>
+        <button onclick="clearHighScores()" style="width:100%;margin-bottom:10px;font-size:10px;padding:5px;opacity:0.7">Clear Scores</button>
+        <button onclick="closeSettings()" style="width:100%">Close</button>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  SOUND ENGINE
+// ============================================================
+let audioCtx = null, muted = false, tripleMode = false;
+let _audioReady = false; // true once the context has been resumed after a user gesture
+
+function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+// Resume a suspended AudioContext (required by browsers before any user gesture).
+// Call this at the top of every user-initiated sound so the first real interaction
+// unlocks audio — but don't attempt to play anything until it's actually running.
+function ensureAudioReady(then) {
+    if (muted) return;
+    const ctx = getCtx();
+    if (ctx.state === 'running') {
+        then(ctx);
+    } else if (ctx.state === 'suspended') {
+        ctx.resume().then(() => then(ctx)).catch(() => {});
+    }
+    // 'closed' state: do nothing
+}
+
+function playTone(freq, type, duration, vol = 0.3, delay = 0) {
+    if (muted) return;
+    ensureAudioReady(ctx => {
+        try {
+            const now = ctx.currentTime + delay;
+            const osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = type; osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            osc.start(now); osc.stop(now + duration + 0.05);
+        } catch(e) {}
+    });
+}
+
+function pageFlip(vol = 0.18) {
+    if (muted) return;
+    ensureAudioReady(ctx => {
+        try {
+            const now = ctx.currentTime, dur = 0.055;
+            const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource(); src.buffer = buf;
+            const hp = ctx.createBiquadFilter(); hp.type = 'highpass';
+            hp.frequency.setValueAtTime(8000, now);
+            hp.frequency.exponentialRampToValueAtTime(1200, now + dur);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+            src.connect(hp); hp.connect(gain); gain.connect(ctx.destination);
+            src.start(now); src.stop(now + dur + 0.01);
+        } catch(e) {}
+    });
+}
+
+const playCardSlide  = () => pageFlip(0.18);
+const playCardPlace  = () => pageFlip(0.22);
+const playSuccess    = () => [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.18,0.25,i*0.08));
+const playWin        = () => [523,659,784,1047,1319,1047,1319,2093].forEach((f,i) => playTone(f,'triangle',0.3,0.3,i*0.1));
+const playAiTurn     = () => playTone(350,'sine',0.1,0.1);
+const playError      = () => pageFlip(0.12);
+// playDeal fires on page load before any user gesture — only play if the context is already running
+const playDeal       = () => { if (audioCtx && audioCtx.state === 'running') { for (let i=0;i<5;i++) setTimeout(()=>pageFlip(0.15),i*120); } };
+const playGoalPlay   = () => { playTone(440,'sine',0.18,0.22); playTone(659,'sine',0.22,0.18,0.1); };
+const playDiscardClear = () => { pageFlip(0.25); playTone(880,'triangle',0.12,0.15,0.06); playTone(1109,'sine',0.18,0.12,0.14); };
+
+function playBlock() {
+    playTone(146.8, 'sawtooth', 0.5, 0.18);
+    playTone(164.8, 'triangle', 0.45, 0.14, 0.03);
+    playTone(220,   'triangle', 0.5, 0.16, 0.06);
+    playTone(261.6, 'sawtooth', 0.4, 0.12, 0.09);
+    playTone(293.6, 'sine',     0.35, 0.1, 0.25);
+}
+
+function toggleMute() {
+    muted = !muted;
+    document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+    const st = document.getElementById("soundToggle");
+    st.textContent = muted ? "Off" : "On";
+    st.classList.toggle("on", !muted);
+}
+
+function toggleTripleMode() {
+    tripleMode = !tripleMode;
+    const btn = document.getElementById("deckToggle");
+    btn.textContent = tripleMode ? "3 Decks" : "2 Decks";
+    btn.classList.toggle("on", tripleMode);
+    loadBestScore();
+    loadBestRun();
+}
+
+// ============================================================
+//  SCORING & HIGH SCORES
+// ============================================================
+const SCORE = { CENTER_CLEAR:45, DISCARD_CLEAR:25, GOAL_PLAY:70, WIN:300 };
+let score = 0;
+let flashQueue = [], flashTimer = null;
+
+function addScore(pts, originEl, isRun = false) {
+    score += pts;
+    document.getElementById("scoreDisplay").textContent = score;
+    if (originEl) {
+        const r = originEl.getBoundingClientRect();
+        flashQueue.push({ pts, x: r.left + r.width/2 - 20, y: r.top - 10, isRun });
+        if (!flashTimer) drainFlashQueue();
+        // Spawn score particles flying to the score display
+        const particleCount = isRun ? Math.min(8, Math.ceil(pts / 5)) : Math.min(4, Math.ceil(pts / 2));
+        spawnScoreParticles(originEl, particleCount);
+    }
+}
+
+function drainFlashQueue() {
+    if (!flashQueue.length) { flashTimer = null; return; }
+    const { pts, x, y, isRun } = flashQueue.shift();
+    const el = document.createElement("div");
+    el.className = "score-flash" + (isRun ? " run-flash" : "");
+    el.textContent = "+" + pts;
+    el.style.left = x + "px";
+    el.style.top  = y + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+    flashTimer = setTimeout(drainFlashQueue, 300);
+}
+
+const bestRunKey = () => tripleMode ? "smBestRun3" : "smBestRun2";
+
+function loadBestRun() {
+    const v = parseInt(localStorage.getItem(bestRunKey())) || 1;
+    document.getElementById("bestRunDisplay").textContent = "×" + v;
+}
+
+function trackBestRun(multVal) {
+    const stored = parseInt(localStorage.getItem(bestRunKey())) || 1;
+    if (multVal > stored) {
+        localStorage.setItem(bestRunKey(), multVal);
+        document.getElementById("bestRunDisplay").textContent = "×" + multVal;
+    }
+}
+
+const hsKey = () => tripleMode ? "smHighScores3" : "smHighScores2";
+const getHighScores = () => { try { return JSON.parse(localStorage.getItem(hsKey())) || []; } catch(e) { return []; } };
+
+function saveHighScore() {
+    const hs = getHighScores();
+    hs.push({ score, date: new Date().toLocaleDateString() });
+    hs.sort((a,b) => b.score - a.score);
+    hs.splice(10);
+    localStorage.setItem(hsKey(), JSON.stringify(hs));
+    document.getElementById("highScoreDisplay").textContent = (hs[0] && hs[0].score) ? hs[0].score : 0;
+}
+
+function loadBestScore() {
+    const hs = getHighScores();
+    document.getElementById("highScoreDisplay").textContent = (hs[0] && hs[0].score) ? hs[0].score : 0;
+}
+
+function clearHighScores() {
+    if (!confirm("Clear all high scores?")) return;
+    localStorage.removeItem(hsKey());
+    localStorage.removeItem(bestRunKey());
+    document.getElementById("highScoreDisplay").textContent = 0;
+    document.getElementById("bestRunDisplay").textContent = "×1";
+    renderHsList();
+}
+
+function renderHsList() {
+    const list = document.getElementById("hsList");
+    const hs = getHighScores();
+    document.getElementById("hsModeLabel").textContent = tripleMode ? "3-Deck Scores" : "2-Deck Scores";
+    if (!hs.length) { list.innerHTML = `<p class='hs-empty'>No scores yet — win a game!</p>`; return; }
+    list.innerHTML = hs.map((h,i) => `<li><span>#${i+1}&nbsp; ${h.date}</span><span>${h.score}</span></li>`).join("");
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+const openSettings  = () => { renderHsList(); document.getElementById("settingsOverlay").classList.add("show"); };
+const closeSettings = () => document.getElementById("settingsOverlay").classList.remove("show");
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+const suits  = ["♠","♥","♦","♣"];
+const values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const WILD   = "🤪";
+const PIP_LAYOUTS = {
+    "A":[[1]],"2":[[1],[1]],"3":[[1],[1],[1]],"4":[[2],[2]],"5":[[2],[1],[2]],
+    "6":[[2],[2],[2]],"7":[[2],[1],[2],[2]],"8":[[2],[2],[2],[2]],
+    "9":[[2],[1],[2],[2],[2]],"10":[[2],[2],[1],[2],[2]],"J":null,"Q":null,"K":null
+};
+
+// Run tracking: per-stack card count this turn, total multiplier
+// runStackCounts[i] = number of cards played to center[i] this turn
+// currentRunStackIdx = which stack the run word currently hovers above (-1 = none)
+let runStackCounts, runMultiplier, currentRunStackIdx;
+
+let deck = [], recyclePile = [];
+let center, playerGoal, aiGoal, playerHand, aiHand, playerDiscard, aiDiscard;
+let maxDiscardDepth;
+let selectedCard = null, selectedSource = null, playerTurn = true;
+let prevHandSnapshot = [];
+let expandedPlayerDiscards = new Set(), expandedAiDiscards = new Set();
+let dragCard = null, dragSource = null, currentDropTarget = null;
+let dragOffsetX = 0, dragOffsetY = 0;
+let pendingParticleSpawn = null;
+const dragGhostEl = document.getElementById("dragGhost");
+
+// ============================================================
+//  RUN SYSTEM
+// ============================================================
+// Multiplier ladder: 1,2,4,8,16,32,64,128 (level 1..8)
+const getRunMultiplier = level => Math.pow(2, Math.max(0, level - 1));
+
+// The run word element — positioned above the center deck area
+let runWordEl = null;
+let runWordFadeTimer = null;
+
+function resetRunTracking() {
+    runStackCounts = [0, 0, 0, 0, 0];
+    runMultiplier = 0;
+    currentRunStackIdx = -1;
+    hideRunWord();
+}
+
+function hideRunWord() {
+    if (!runWordEl) return;
+    runWordEl.classList.remove("active", "settle");
+    clearRunStackGlows();
+}
+
+// Position the floating word above the currently running center stack
+function positionRunWord() {
+    if (!runWordEl) return;
+    let targetEl = null;
+    // Try to find the specific running stack card element
+    if (currentRunStackIdx >= 0) {
+        targetEl = document.querySelector(`[data-dropzone="center"][data-idx="${currentRunStackIdx}"] .top-card`)
+                || document.querySelector(`[data-dropzone="center"][data-idx="${currentRunStackIdx}"]`);
+    }
+    // Fallback: center row
+    if (!targetEl) {
+        targetEl = document.getElementById("center");
+    }
+    if (!targetEl) return;
+    const r = targetEl.getBoundingClientRect();
+    const risePerLevel = 18;
+    const yOffset = 20 + runMultiplier * risePerLevel;
+    const cx = r.left + r.width / 2;
+    const cy = r.top; // fixed positioning = viewport coords, no scrollY needed
+    runWordEl.style.left = cx + "px";
+    runWordEl.style.top  = (cy - yOffset) + "px";
+    runWordEl.style.transform = "translateX(-50%)"; // horizontally centre the text
+}
+
+// Taunt labels that escalate with multiplier level
+const RUN_LABELS = [
+    "RUN",          // ×1
+    "RUN",          // ×2
+    "HOT",          // ×4
+    "BLAZING",      // ×8
+    "UNSTOPPABLE",  // ×16
+    "INFERNO",      // ×32
+    "LEGENDARY",    // ×64
+    "GODLIKE",      // ×128
+    "IMPOSSIBLE",   // ×256
+    "ARE YOU EVEN REAL", // ×512+
+];
+
+// Called each time a new run level is triggered
+function updateRunWord() {
+    if (!runWordEl) return;
+    const level = runMultiplier; // 1..n
+    const mult  = getRunMultiplier(level);
+
+    // Track best run this session and all time
+    trackBestRun(mult);
+
+    // Opacity: ghostly at first, full by level 4
+    const opacity = Math.min(0.22 + level * 0.13, 1.0);
+
+    // Font size: grows quickly but caps at 44px — legibility over drama
+    const fontSize = Math.min(12 + level * 6, 44);
+
+    // Colour: deep ember orange → bright fire white-gold
+    const r = Math.min(180 + level * 12, 255);
+    const g = Math.min(55  + level * 18, 220);
+    const b = Math.max(20  - level * 2,  0);
+    const color = `rgb(${r},${g},${b})`;
+
+    // Glow
+    const glowR1 = clamp(200 + level * 8, 200, 255);
+    const glowG1 = clamp(80  + level * 15, 80, 200);
+    const glowSpread1 = 6 + level * 6;
+    const glowSpread2 = 10 + level * 12;
+    const glow = `0 0 ${glowSpread1}px rgba(${glowR1},${glowG1},0,${Math.min(0.2 + level*0.1, 0.9)}), `
+               + `0 0 ${glowSpread2}px rgba(255,100,0,${Math.min(0.1 + level*0.08, 0.7)})`;
+
+    // Wobble speed: dreamlike → urgent
+    const wobbleDur = Math.max(2.8 - level * 0.2, 1.0);
+    const spacing = Math.max(6 - level * 0.4, 1);
+
+    runWordEl.style.fontSize      = fontSize + "px";
+    runWordEl.style.opacity       = opacity;
+    runWordEl.style.color         = color;
+    runWordEl.style.textShadow    = glow;
+    runWordEl.style.letterSpacing = spacing + "px";
+    runWordEl.style.animationDuration = wobbleDur + "s";
+
+    const label = RUN_LABELS[Math.min(level - 1, RUN_LABELS.length - 1)];
+    const multStr = mult >= 2 ? ` ×${mult}` : "";
+    runWordEl.textContent = label + multStr;
+
+    positionRunWord();
+    runWordEl.classList.add("active");
+    runWordEl.classList.remove("settle");
+}
+
+function recordCardPlayedToStack(stackIdx) {
+    runStackCounts[stackIdx]++;
+    const count = runStackCounts[stackIdx];
+    // Total cards played to any center stack this turn
+    const totalPlayed = runStackCounts.reduce((s, c) => s + c, 0);
+
+    // Run activates on the 2nd card played to any stack this turn
+    if (totalPlayed >= 2) {
+        if (currentRunStackIdx !== stackIdx) {
+            updateRunStackGlow(currentRunStackIdx, false, 0);
+            currentRunStackIdx = stackIdx;
+        }
+    }
+
+    // Multiplier level based on TOTAL cards played across all stacks this turn
+    // 2nd card = level 1, every 3 more = +1 level (so 2,5,8,11…)
+    const newLevel = totalPlayed >= 2 ? Math.floor((totalPlayed - 2) / 3) + 1 : 0;
+    const leveledUp = newLevel > runMultiplier;
+    if (newLevel > runMultiplier) {
+        runMultiplier = newLevel;
+        updateRunWord();
+        playRunNote(runMultiplier);
+    } else if (totalPlayed >= 2) {
+        if (runMultiplier > 0) {
+            updateRunWord();
+        } else {
+            positionRunWord();
+            showEarlyRunWord(totalPlayed);
+        }
+    }
+
+    // Spawn ambient orbit particles around the active center card
+    // Queue them — DOM hasn't been rebuilt by render() yet, so defer
+    if (totalPlayed >= 2) {
+        const depth = Math.min((totalPlayed - 2) / 12, 1);
+        updateRunStackGlow(stackIdx, true, depth);
+        pendingParticleSpawn = { stackIdx, count: leveledUp ? 6 : 2 };
+    }
+}
+
+// Show a dim run indicator before the multiplier kicks in (cards 2-4)
+function showEarlyRunWord(count) {
+    if (!runWordEl || count < 2) return;
+    const frac = (count - 2) / 3; // 0 at card 2, 1 at card 5
+    runWordEl.style.fontSize = (12 + frac * 8) + "px";
+    runWordEl.style.opacity = (0.12 + frac * 0.15).toString();
+    runWordEl.style.color = "rgb(200,120,20)";
+    runWordEl.style.textShadow = "none";
+    runWordEl.style.letterSpacing = "6px";
+    runWordEl.style.animationDuration = "2.8s";
+    runWordEl.textContent = "RUN";
+    positionRunWord();
+    runWordEl.classList.add("active");
+    runWordEl.classList.remove("settle");
+}
+
+function updateRunStackGlow(stackIdx, on, depth) {
+    if (stackIdx < 0) return;
+    const el = document.querySelector('[data-dropzone="center"][data-idx="' + stackIdx + '"] .top-card')
+            || document.querySelector('[data-dropzone="center"][data-idx="' + stackIdx + '"]');
+    if (!el) return;
+    if (on) {
+        el.style.setProperty('--run-depth', (depth || 0).toFixed(3));
+        el.classList.add("run-stack-glow");
+    } else {
+        el.classList.remove("run-stack-glow");
+        el.style.removeProperty('--run-depth');
+    }
+}
+
+function clearRunStackGlows() {
+    document.querySelectorAll(".run-stack-glow").forEach(el => el.classList.remove("run-stack-glow"));
+}
+
+// Called by special moves (block AI, discard clear) to jump the run multiplier
+function boostRunMultiplier(levels, label) {
+    if (currentRunStackIdx < 0 || runStackCounts[currentRunStackIdx] < 2) return; // no active run
+    runMultiplier += levels;
+    updateRunWord();
+    playRunNote(runMultiplier);
+    // Flash a special boost label near the run word
+    if (runWordEl) {
+        const r = runWordEl.getBoundingClientRect();
+        const tag = document.createElement("div");
+        tag.className = "score-flash run-flash";
+        tag.textContent = label;
+        tag.style.left = (r.left + r.width / 2 - 30) + "px";
+        tag.style.top  = (r.top - 28) + "px";
+        tag.style.fontSize = "14px";
+        document.body.appendChild(tag);
+        setTimeout(() => tag.remove(), 1200);
+    }
+}
+
+// Music: starts in deep bass (55 Hz = A1), walks up in minor thirds
+// so even run level 13 stays musical and doesn't screech
+// Pattern: A1 → C2 → Eb2 → F#2 → A2 → C3 → Eb3 → F#3 → A3 → C4 → Eb4 → F#4 → A4
+const RUN_NOTE_FREQS = [
+    55.0,   // A1  — deep sub-bass rumble
+    65.4,   // C2
+    77.8,   // Eb2
+    92.5,   // F#2
+    110.0,  // A2  — bass guitar territory
+    130.8,  // C3
+    155.6,  // Eb3
+    185.0,  // F#3
+    220.0,  // A3  — cello
+    261.6,  // C4  — middle register
+    311.1,  // Eb4
+    370.0,  // F#4
+    440.0,  // A4  — bright top note for level 13
+];
+
+function playRunNote(level) {
+    if (muted) return;
+    const idx   = Math.min(level - 1, RUN_NOTE_FREQS.length - 1);
+    const freq  = RUN_NOTE_FREQS[idx];
+    const isLow = level <= 3;
+
+    // Volume scales up gently; bass notes get a longer decay
+    const vol  = Math.min(0.12 + level * 0.04, 0.55);
+    const dur  = isLow ? 0.9 : 0.5;
+
+    // Low levels: sine + sub rumble; mid: triangle chord; high: bright chord
+    if (isLow) {
+        playTone(freq,       'sine',     dur,      vol,       0);
+        playTone(freq * 1.5, 'sine',     dur * 0.6, vol * 0.4, 0.06); // fifth above
+    } else if (level <= 6) {
+        playTone(freq,       'triangle', dur,      vol,       0);
+        playTone(freq * 1.5, 'triangle', dur * 0.7, vol * 0.5, 0.05);
+        playTone(freq * 2,   'sine',     dur * 0.5, vol * 0.3, 0.1);
+    } else {
+        // High drama: full triad + shimmer
+        playTone(freq,       'triangle', dur,      vol,       0);
+        playTone(freq * 1.2, 'sine',     dur * 0.8, vol * 0.6, 0.04);
+        playTone(freq * 1.5, 'triangle', dur * 0.7, vol * 0.5, 0.08);
+        playTone(freq * 2,   'sine',     dur * 0.4, vol * 0.35, 0.12);
+    }
+}
+
+// Called at end of player turn — award accumulated run bonus, then dissolve
+function settleRunBonus() {
+    if (runMultiplier <= 0) return;
+    const multVal = getRunMultiplier(runMultiplier);
+    const basePts = runStackCounts.reduce((sum, c) => sum + c, 0);
+    const bonus   = basePts * multVal;
+
+    // Settle animation — bright flash then float away
+    if (runWordEl) {
+        runWordEl.style.opacity = "1";
+        runWordEl.classList.add("settle");
+        setTimeout(() => { runWordEl.classList.remove("active", "settle"); runWordEl.style.filter = ""; clearRunStackGlows(); }, 800);
+    }
+
+    // Burst of score particles from the run stack toward the score
+    const activeEl = (currentRunStackIdx >= 0)
+        ? (document.querySelector(`[data-dropzone="center"][data-idx="${currentRunStackIdx}"] .top-card`)
+           || document.querySelector(`[data-dropzone="center"][data-idx="${currentRunStackIdx}"]`))
+        : null;
+    if (activeEl) spawnScoreParticles(activeEl, Math.min(12, multVal + 3));
+
+    addScore(bonus, document.getElementById("scoreDisplay"), true);
+}
+
+const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
+
+// ============================================================
+//  UTILITY
+// ============================================================
+const shuffle = a => { for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } };
+
+function tryRefillDeck() {
+    if (deck.length===0 && recyclePile.length>0) { deck.push(...recyclePile); shuffle(deck); recyclePile=[]; }
+}
+
+function clearCenterStack(i) {
+    recyclePile.push(...center[i].map(c => c.startsWith(WILD) ? WILD : c));
+    center[i] = []; tryRefillDeck();
+}
+
+function cardValue(card) {
+    if (card.startsWith(WILD)) {
+        const m = card.match(/🤪\((.+)\)/);
+        if (m) { const idx = values.indexOf(m[1].toUpperCase()); return idx >= 0 ? idx + 1 : 0; }
+        return 0;
+    }
+    for (let i = values.length-1; i >= 0; i--) if (card.startsWith(values[i])) return i + 1;
+    return 0;
+}
+
+function parseCard(card) {
+    if (card.startsWith(WILD)) { const m = card.match(/🤪\((.+)\)/); return { val: m ? m[1]+"*" : WILD, suit: "★" }; }
+    for (let i = values.length-1; i >= 0; i--) if (card.startsWith(values[i])) return { val: values[i], suit: card.slice(values[i].length) };
+    return { val: card, suit: "" };
+}
+
+const suitColor = s => (s==="♥"||s==="♦") ? "red" : s==="★" ? "purple" : "black";
+const suitHtml = (suit, cls) => (suit==="♣"||suit==="★") ? `<span class="${cls}">${suit}</span>` : `<span class="${cls} suit-large">${suit}</span>`;
+
+// ============================================================
+//  CARD RENDERING
+// ============================================================
+function renderCardFace(el, card, listHtml) {
+    el.innerHTML = "";
+    Object.assign(el.style, { position:"relative", padding:"0", overflow:"hidden", display:"block" });
+
+    if (card.startsWith(WILD)) {
+        const m = card.match(/🤪\((.+)\)/);
+        Object.assign(el.style, { display:"flex", flexDirection:"column", justifyContent:listHtml?"flex-start":"center", alignItems:"center", fontSize:m?"13px":"22px", color:"purple", paddingTop: listHtml ? "6px" : "0", paddingBottom: listHtml ? "3px" : "0", boxSizing:"border-box" });
+        if (m) {
+            const face = document.createElement("div");
+            face.innerHTML = `<span style='font-size:18px'>🤪</span><span style='font-size:11px;font-weight:bold;color:purple'>${m[1]}</span>`;
+            face.style.cssText = "display:flex;flex-direction:column;align-items:center";
+            el.appendChild(face);
+        } else {
+            const face = document.createElement("span");
+            face.textContent = "🤪";
+            el.appendChild(face);
+        }
+        if (listHtml) {
+            const ls = document.createElement("span");
+            ls.style.cssText = "font-size:9px;line-height:1.5;word-break:break-word;text-align:center;padding:2px 3px;display:flex;flex-wrap:wrap;justify-content:center;gap:1px 3px";
+            ls.innerHTML = listHtml;
+            el.appendChild(ls);
+        }
+        return;
+    }
+
+    const { val, suit } = parseCard(card);
+    const cc = suitColor(suit) === "red" ? "red" : "black";
+
+    const makeCorner = (extra = "") => {
+        const c = document.createElement("div"); c.className = `card-corner ${cc}`;
+        if (extra) c.style.cssText = extra;
+        c.innerHTML = `<span>${val}</span>${suitHtml(suit, cc)}`; return c;
+    };
+    el.appendChild(makeCorner());
+    el.appendChild(makeCorner("top:auto;left:auto;bottom:2px;right:3px;transform:rotate(180deg)"));
+
+    const layout = PIP_LAYOUTS[val];
+    if (listHtml) {
+        Object.assign(el.style, { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", paddingTop:"20px", paddingBottom:"3px", boxSizing:"border-box" });
+        const ss = document.createElement("span"); ss.style.fontSize = "17px"; ss.style.lineHeight = "1";
+        ss.innerHTML = suitHtml(suit, cc);
+        const ls = document.createElement("span");
+        ls.style.cssText = "font-size:9px;line-height:1.5;word-break:break-word;text-align:center;padding:2px 3px;display:flex;flex-wrap:wrap;justify-content:center;gap:1px 3px";
+        ls.innerHTML = listHtml;
+        el.appendChild(ss); el.appendChild(ls);
+    } else if (layout) {
+        const pips = document.createElement("div"); pips.className = "card-pips";
+        layout.forEach(row => {
+            const rd = document.createElement("div"); rd.className = "pip-row";
+            for (let p = 0; p < row[0]; p++) { const pip = document.createElement("span"); pip.innerHTML = suitHtml(suit, cc); rd.appendChild(pip); }
+            pips.appendChild(rd);
+        });
+        el.appendChild(pips);
+    } else {
+        // Use absolute centering so it works regardless of parent display type (flex or block)
+        Object.assign(el.style, { position:"relative" });
+        const center = document.createElement("div");
+        center.style.cssText = "position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:center;align-items:center;";
+        const big = document.createElement("span"); big.className = `card-center-label ${cc}`; big.textContent = val;
+        const bs = document.createElement("span"); bs.innerHTML = `<span class="${cc}">${suit}</span>`; bs.style.fontSize = "15px";
+        center.appendChild(big); center.appendChild(bs);
+        el.appendChild(center);
+    }
+}
+
+// ============================================================
+//  DECK & DEAL
+// ============================================================
+function deal() {
+    const deckCount = tripleMode ? 3 : 2;
+    const goalSize  = tripleMode ? 26 : 13;
+    deck = [];
+    for (let d = 0; d < deckCount; d++) {
+        suits.forEach(s => values.forEach(v => deck.push(v+s, v+s)));
+        deck.push(WILD, WILD);
+    }
+    shuffle(deck); recyclePile = [];
+    playerGoal = deck.splice(0, goalSize); aiGoal = deck.splice(0, goalSize);
+    playerHand = []; aiHand = [];
+    center = Array.from({length:5}, () => []);
+    playerDiscard = Array.from({length:5}, () => []);
+    aiDiscard = Array.from({length:5}, () => []);
+    maxDiscardDepth = Array.from({length:5}, () => 0);
+    selectedCard = null; selectedSource = null;
+    expandedPlayerDiscards = new Set(); expandedAiDiscards = new Set();
+    score = 0; document.getElementById("scoreDisplay").textContent = 0;
+    flashQueue = []; if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+    prevHandSnapshot = [];
+    resetRunTracking();
+    playDeal(); startPlayerTurn();
+}
+
+function refillHandToFive(hand) {
+    while (hand.length < 5) { tryRefillDeck(); if (!deck.length) break; hand.push(deck.shift()); }
+}
+
+function startPlayerTurn() {
+    playerTurn = true; refillHandToFive(playerHand);
+    selectedCard = null; selectedSource = null;
+    resetRunTracking();
+    setStatus("Your turn — drag or click cards to play"); render();
+}
+
+const setStatus = msg => document.getElementById("statusMsg").textContent = msg;
+
+// ============================================================
+//  FLASH HELPERS
+// ============================================================
+function showBlocked() {
+    const el = document.getElementById("blockedFlash");
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 1000);
+}
+
+// ============================================================
+//  DRAG AND DROP
+// ============================================================
+function initDrag(card, source, clientX, clientY, originEl) {
+    if (!playerTurn) return;
+    dragCard = card; dragSource = source;
+    // Render into ghost — renderCardFace stomps position/display so restore after
+    renderCardFace(dragGhostEl, card, null);
+    dragGhostEl.style.position = "fixed";
+    dragGhostEl.style.width = "64px";
+    dragGhostEl.style.height = "92px";
+    dragGhostEl.style.backgroundColor = "var(--card-white)";
+    dragGhostEl.style.transform = "rotate(4deg) scale(1.08)";
+    dragGhostEl.style.boxShadow = "0 20px 40px rgba(0,0,0,0.6)";
+    // renderCardFace sets display:block then flex for J/Q/K — keep flex if set, else block
+    if (!dragGhostEl.style.display || dragGhostEl.style.display === "none") dragGhostEl.style.display = "block";
+
+    dragOffsetX = 32; dragOffsetY = 46;
+    moveDragGhost(clientX, clientY);
+    if (originEl) originEl.classList.add("dragging");
+    highlightDropZones(card);
+    document.addEventListener("mousemove", onDragMove);
+    document.addEventListener("mouseup", onDragEnd);
+    document.addEventListener("touchmove", onDragTouchMove, { passive:false });
+    document.addEventListener("touchend", onDragTouchEnd);
+}
+
+const moveDragGhost = (cx, cy) => { dragGhostEl.style.left = (cx - dragOffsetX) + "px"; dragGhostEl.style.top = (cy - dragOffsetY) + "px"; };
+const onDragMove = e => { moveDragGhost(e.clientX, e.clientY); updateDropHover(e.clientX, e.clientY); };
+const onDragTouchMove = e => { e.preventDefault(); const t = e.touches[0]; moveDragGhost(t.clientX, t.clientY); updateDropHover(t.clientX, t.clientY); };
+const onDragEnd = e => finishDrag(e.clientX, e.clientY);
+const onDragTouchEnd = e => { const t = e.changedTouches[0]; finishDrag(t.clientX, t.clientY); };
+
+function updateDropHover(cx, cy) {
+    if (currentDropTarget) { currentDropTarget.classList.remove("drop-zone-hover"); currentDropTarget = null; }
+    dragGhostEl.style.display = "none";
+    const el = document.elementFromPoint(cx, cy);
+    dragGhostEl.style.display = "block";
+    if (el) { const dz = el.closest("[data-dropzone]"); if (dz && dz.classList.contains("drop-zone-active")) { dz.classList.add("drop-zone-hover"); currentDropTarget = dz; } }
+}
+
+function finishDrag(cx, cy) {
+    document.removeEventListener("mousemove", onDragMove); document.removeEventListener("mouseup", onDragEnd);
+    document.removeEventListener("touchmove", onDragTouchMove); document.removeEventListener("touchend", onDragTouchEnd);
+    dragGhostEl.style.display = "none"; dragGhostEl.style.transform = ""; dragGhostEl.style.boxShadow = ""; clearDropZones();
+    if (!dragCard) return;
+    const el = document.elementFromPoint(cx, cy);
+    if (el) {
+        const dz = el.closest("[data-dropzone]");
+        if (dz) {
+            const type = dz.getAttribute("data-dropzone"), idx = parseInt(dz.getAttribute("data-idx"));
+            if (type === "center") tryPlayToCenter(idx);
+            else if (type === "pdiscard") tryDiscardTo(idx);
+        }
+    }
+    dragCard = null; dragSource = null;
+    document.querySelectorAll(".dragging").forEach(e => e.classList.remove("dragging"));
+    render();
+}
+
+const centerNeeded = i => center[i].length === 0 ? 1 : cardValue(center[i][center[i].length-1]) + 1;
+
+function highlightDropZones(card) {
+    const cv = cardValue(card);
+    for (let i = 0; i < 5; i++) {
+        if (cv === centerNeeded(i) || cv === 0) {
+            const dz = document.querySelector(`[data-dropzone="center"][data-idx="${i}"]`);
+            if (dz) dz.classList.add("drop-zone-active");
+        }
+    }
+    if (dragSource && dragSource.type === "hand") document.querySelectorAll(`[data-dropzone="pdiscard"]`).forEach(dz => dz.classList.add("drop-zone-active"));
+}
+
+const clearDropZones = () => document.querySelectorAll(".drop-zone-active").forEach(el => el.classList.remove("drop-zone-active", "drop-zone-hover"));
+
+// ============================================================
+//  STACK BUILDERS
+// ============================================================
+const SLIVER_OFFSETS = [3, 5, 7, 9, 10, 11, 12, 13, 14]; // px peeking below top card
+
+function buildSlivers(count) {
+    if (count <= 0) return null;
+    const wrap = document.createElement("div"); wrap.className = "stack-layers";
+    const visCount = Math.min(count, SLIVER_OFFSETS.length);
+    // render deepest first so top layers paint over them
+    for (let k = visCount - 1; k >= 0; k--) {
+        const offset = SLIVER_OFFSETS[k];
+        const l = document.createElement("div"); l.className = "stack-layer";
+        // Each layer: slightly darker/more offset the deeper it is
+        const darkness = 80 - k * 6;
+        const darkness2 = 65 - k * 6;
+        l.style.background = `linear-gradient(160deg, hsl(30,18%,${darkness}%) 0%, hsl(28,16%,${darkness2}%) 100%)`;
+        l.style.top = offset + "px";
+        l.style.zIndex = (visCount - k).toString();
+        wrap.appendChild(l);
+    }
+    // Wrap needs enough height to show the deepest layer peeking out
+    const maxOffset = SLIVER_OFFSETS[visCount - 1];
+    wrap.style.height = (92 + maxOffset) + "px";
+    return wrap;
+}
+
+function setDropzone(el, type, idx) { el.setAttribute("data-dropzone", type); el.setAttribute("data-idx", idx); }
+function makeEmpty(dt, di) { const e = document.createElement("div"); e.className = "stack-empty"; e.textContent = "Empty"; if (dt) setDropzone(e, dt, di); return e; }
+
+function buildStackDiv(stack, onTopCardClick, showList, dropzoneType, dropzoneIdx) {
+    if (stack.length === 0) return makeEmpty(dropzoneType, dropzoneIdx);
+    const wrap = document.createElement("div"); wrap.className = "stack-wrap";
+    if (dropzoneType) setDropzone(wrap, dropzoneType, dropzoneIdx);
+    const top = document.createElement("div"); top.className = "top-card";
+    if (onTopCardClick) top.onclick = e => { e.stopPropagation(); onTopCardClick(e); };
+    const listHtml = (showList && stack.length > 1) ? stack.slice(0, -1).reverse().map(c => {
+        const { val, suit } = parseCard(c);
+        const isPurple = suit === "★", isRed = suitColor(suit) === "red";
+        const col = isPurple ? "purple" : isRed ? "#c41e3a" : "#1a1a1a";
+        const sh = (!isPurple && suit !== "♣") ? `<span class="suit-large" style="color:${col}">${suit}</span>` : `<span style="color:${col}">${suit}</span>`;
+        return `<span style="color:${col}">${val}${sh}</span>`;
+    }).join(" ") : null;
+    renderCardFace(top, stack[stack.length-1], listHtml);
+    if (dropzoneType === "pdiscard") {
+        const card = stack[stack.length-1], src = { type:"discard", index:dropzoneIdx };
+        top.addEventListener("mousedown", e => { if (playerTurn) initDrag(card, src, e.clientX, e.clientY, top); });
+        top.addEventListener("touchstart", e => { if (playerTurn) { const t = e.touches[0]; initDrag(card, src, t.clientX, t.clientY, top); } }, { passive:true });
+    }
+    wrap.appendChild(top);
+    const slivers = buildSlivers(stack.length - 1); if (slivers) { wrap.insertBefore(slivers, top); top.style.position = "relative"; top.style.zIndex = "10"; }
+    return wrap;
+}
+
+function buildGoalDiv(cardText, count, extraClass, onClick, isDraggable) {
+    const wrap = document.createElement("div"); wrap.className = "goal-wrap";
+    const card = document.createElement("div"); card.className = "goal-card" + (extraClass ? " " + extraClass : "");
+    if (extraClass && extraClass.includes("draw-card")) {
+        Object.assign(card.style, { display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center" });
+        card.textContent = cardText;
+    } else renderCardFace(card, cardText, null);
+    if (onClick) card.onclick = onClick;
+    if (isDraggable) {
+        card.addEventListener("mousedown", e => { if (playerTurn) initDrag(cardText, { type:"goal" }, e.clientX, e.clientY, card); });
+        card.addEventListener("touchstart", e => { if (playerTurn) { const t = e.touches[0]; initDrag(cardText, { type:"goal" }, t.clientX, t.clientY, card); } }, { passive:true });
+    }
+    wrap.appendChild(card);
+    const slivers = buildSlivers(count); if (slivers) { wrap.insertBefore(slivers, card); card.style.position = "relative"; card.style.zIndex = "10"; }
+    return wrap;
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render() {
+    const $ = id => document.getElementById(id);
+
+    // AI goal
+    $("aiGoalArea").innerHTML = "";
+    $("aiGoalArea").appendChild(aiGoal.length ? buildGoalDiv(aiGoal[aiGoal.length-1], Math.min(aiGoal.length-1, 9), "", null, false) : makeEmpty());
+
+    // Draw deck
+    $("drawDeckArea").innerHTML = "";
+    $("drawDeckArea").appendChild(buildGoalDiv(deck.length ? "SPITE\n&\nMALICE" : "EMPTY", Math.min(Math.max(0, deck.length-1), 9), "draw-card", null, false));
+
+    // Player goal
+    $("playerGoalArea").innerHTML = "";
+    if (playerGoal.length) {
+        const card = playerGoal[playerGoal.length-1];
+        $("playerGoalArea").appendChild(buildGoalDiv(card, Math.min(playerGoal.length-1, 9), "", playerTurn ? () => selectCard(card, "goal", playerGoal.length-1) : null, playerTurn));
+    } else $("playerGoalArea").appendChild(makeEmpty());
+
+    // Center stacks
+    $("center").innerHTML = "";
+    center.forEach((stack, i) => {
+        const el = buildStackDiv(stack, null, false, "center", i);
+        el.addEventListener("click", () => { if (selectedCard) playToCenter(i); });
+        $("center").appendChild(el);
+    });
+    // Re-apply run glow after DOM rebuild
+    if (currentRunStackIdx >= 0 && runStackCounts[currentRunStackIdx] >= 2) {
+        const depth = Math.min((runStackCounts[currentRunStackIdx] - 2) / 10, 1);
+        updateRunStackGlow(currentRunStackIdx, true, depth);
+    }
+
+    // Flush any deferred particle spawn — DOM is ready now
+    if (pendingParticleSpawn) {
+        const { stackIdx, count } = pendingParticleSpawn;
+        pendingParticleSpawn = null;
+        const cardEl = document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"] .top-card`)
+                    || document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"]`);
+        if (cardEl) spawnRunParticles(cardEl, count);
+    }
+
+    // Player discard
+    $("playerDiscard").innerHTML = "";
+    playerDiscard.forEach((stack, i) => {
+        const fn = e => { if (e) e.stopPropagation(); if (stack.length) selectCard(stack[stack.length-1], "discard", i); togglePlayerDiscard(i); };
+        $("playerDiscard").appendChild(buildStackDiv(stack, stack.length ? fn : null, expandedPlayerDiscards.has(i), "pdiscard", i));
+    });
+
+    // AI discard
+    $("aiDiscard").innerHTML = "";
+    aiDiscard.forEach((stack, i) => {
+        const fn = stack.length ? e => { if (e) e.stopPropagation(); toggleAiDiscard(i); } : null;
+        $("aiDiscard").appendChild(buildStackDiv(stack, fn, expandedAiDiscards.has(i)));
+    });
+
+    // Hand
+    $("hand").innerHTML = "";
+    const newCards = playerHand.filter(c => !prevHandSnapshot.includes(c));
+    playerHand.forEach((card, i) => {
+        const div = document.createElement("div");
+        const isSel = selectedCard === card && selectedSource && selectedSource.type === "hand" && selectedSource.index === i;
+        div.className = "card" + (isSel ? " selected" : "") + (newCards.includes(card) ? " card-deal" : "");
+        if (newCards.includes(card)) div.style.animationDelay = (i * 0.04) + "s";
+        renderCardFace(div, card, null);
+        div.onclick = () => selectCard(card, "hand", i);
+        div.addEventListener("mousedown", e => initDrag(card, { type:"hand", index:i }, e.clientX, e.clientY, div));
+        div.addEventListener("touchstart", e => { const t = e.touches[0]; initDrag(card, { type:"hand", index:i }, t.clientX, t.clientY, div); }, { passive:true });
+        $("hand").appendChild(div);
+    });
+    prevHandSnapshot = [...playerHand];
+
+    showMoves(); checkWin();
+    // Invalidate cached center element refs after DOM rebuild
+    invalidateCenterElCache();
+    // Keep floating run word anchored above current run stack
+    if (runMultiplier > 0) positionRunWord();
+}
+
+function selectCard(card, source, index) {
+    if (!playerTurn) return;
+    if (selectedCard === card && selectedSource && selectedSource.type === source && selectedSource.index === index) { selectedCard = null; selectedSource = null; }
+    else { selectedCard = card; selectedSource = { type:source, index }; }
+    playCardSlide(); render();
+}
+
+const togglePlayerDiscard = i => { if (expandedPlayerDiscards.has(i)) expandedPlayerDiscards.delete(i); else expandedPlayerDiscards.add(i); render(); };
+const toggleAiDiscard = i => { if (expandedAiDiscards.has(i)) expandedAiDiscards.delete(i); else expandedAiDiscards.add(i); render(); };
+
+function showMoves() {
+    const container = document.getElementById("actionButtons"); container.innerHTML = "";
+    if (!selectedCard) return;
+    const cv = cardValue(selectedCard);
+    for (let i = 0; i < 5; i++) {
+        if (cv === centerNeeded(i) || cv === 0) {
+            const btn = document.createElement("button"); btn.textContent = "▶"+(i+1); btn.onclick = () => playToCenter(i); container.appendChild(btn);
+        }
+    }
+    if (selectedSource && selectedSource.type === "hand") {
+        for (let i = 0; i < 5; i++) {
+            const btn = document.createElement("button"); btn.textContent = "▽"+(i+1); btn.onclick = () => discardTo(i); container.appendChild(btn);
+        }
+    }
+}
+
+// ============================================================
+//  PLAY LOGIC
+// ============================================================
+const resolveWild = (card, needed) => (card.startsWith(WILD) && !card.includes("(")) ? WILD+"("+values[needed-1]+")" : card;
+const getCenterEl = i => document.querySelector(`[data-dropzone="center"][data-idx="${i}"] .top-card`) || document.querySelector(`[data-dropzone="center"][data-idx="${i}"]`);
+
+function playCardToCenter(idx, card, source) {
+    const needed = centerNeeded(idx), cv = cardValue(card);
+    if (cv !== needed && cv !== 0) return false;
+
+    const played = resolveWild(card, needed);
+    center[idx].push(played);
+    const stackEl = getCenterEl(idx);
+
+    // Base +1 per center play
+    addScore(1, stackEl);
+
+    // Block AI bonus — also boosts the run multiplier by 1
+    if (aiGoal.length) {
+        const aiTopVal = cardValue(aiGoal[aiGoal.length-1]);
+        if (aiTopVal > 0 && cardValue(played) === aiTopVal) {
+            addScore(55, stackEl); playBlock(); showBlocked();
+            boostRunMultiplier(1, "BLOCK +1×");
+        }
+    }
+
+    // Track run — ALL sources (hand, discard, goal) count toward the run
+    recordCardPlayedToStack(idx);
+
+    const isKing = cardValue(played) === 13;
+    if (isKing) {
+        addScore(SCORE.CENTER_CLEAR, stackEl);
+        clearCenterStack(idx); playSuccess();
+        if (source && source.type === "goal") {
+            addScore(SCORE.GOAL_PLAY, stackEl);
+            boostRunMultiplier(1, "GOAL +1×");  // goal clears give run boost
+            setTimeout(playGoalPlay, 520);
+        } else if (source && source.type === "discard") {
+            setTimeout(playDiscardClear, 520);
+            boostRunMultiplier(1, "CLEAR +1×");
+        }
+    } else if (source && source.type === "goal") {
+        addScore(SCORE.GOAL_PLAY, stackEl);
+        boostRunMultiplier(1, "GOAL +1×");  // every goal play boosts run
+        playGoalPlay();
+    } else {
+        playCardPlace();
+    }
+    return true;
+}
+
+function tryPlayToCenter(idx) {
+    if (!dragCard || !dragSource) return;
+    if (!playCardToCenter(idx, dragCard, dragSource)) { playError(); return; }
+    const didClear = center[idx].length === 0;
+    removeFromSource(dragSource, didClear);
+    if (playerHand.length === 0) refillHandToFive(playerHand);
+    selectedCard = null; selectedSource = null;
+    if (!checkWin()) render();
+}
+
+function tryDiscardTo(idx) {
+    if (!dragCard || !dragSource || dragSource.type !== "hand") { playError(); return; }
+    playerDiscard[idx].push(dragCard); playerHand.splice(dragSource.index, 1);
+    maxDiscardDepth[idx] = Math.max(maxDiscardDepth[idx], playerDiscard[idx].length);
+    playCardSlide(); selectedCard = null; selectedSource = null; endPlayerTurn();
+}
+
+function playToCenter(i) {
+    if (!selectedCard || !playCardToCenter(i, selectedCard, selectedSource)) { playError(); return; }
+    const didClear = center[i].length === 0;
+    removeSelected(didClear);
+    if (playerHand.length === 0) refillHandToFive(playerHand);
+    if (!checkWin()) render();
+}
+
+function discardTo(i) {
+    if (!selectedCard) return;
+    playerDiscard[i].push(selectedCard);
+    maxDiscardDepth[i] = Math.max(maxDiscardDepth[i], playerDiscard[i].length);
+    removeSelected(); playCardSlide(); endPlayerTurn();
+}
+
+function endPlayerTurn() {
+    settleRunBonus();       // award run bonus before switching
+    playerTurn = false;
+    document.getElementById("aiThinking").classList.add("show");
+    setStatus("AI is thinking…"); render();
+    setTimeout(aiTurn, 700);
+}
+
+function removeFromSource(source, centerCleared = false) {
+    if (!source) return;
+    if (source.type === "hand") {
+        playerHand.splice(source.index, 1);
+    } else if (source.type === "discard") {
+        const peakDepth = maxDiscardDepth[source.index];
+        playerDiscard[source.index].pop();
+        if (playerDiscard[source.index].length === 0) {
+            maxDiscardDepth[source.index] = 0;
+            const pts = peakDepth >= 4 ? 25 : peakDepth === 3 ? 20 : peakDepth === 2 ? 10 : 0;
+            if (pts > 0) {
+                const discardEls = document.querySelectorAll("#playerDiscard .stack-wrap, #playerDiscard .stack-empty");
+                addScore(pts, discardEls[source.index]);
+            }
+            // Clearing a discard pile mid-run jumps multiplier by 2
+            const boost = peakDepth >= 4 ? 2 : peakDepth >= 2 ? 1 : 0;
+            if (boost > 0) boostRunMultiplier(boost, "CLEAR +" + boost + "×");
+            if (centerCleared) setTimeout(playDiscardClear, 520);
+            else playDiscardClear();
+        }
+    } else if (source.type === "goal") {
+        playerGoal.pop();
+    }
+}
+
+function removeSelected(centerCleared = false) {
+    removeFromSource(selectedSource, centerCleared); selectedCard = null; selectedSource = null;
+}
+
+function checkWin() {
+    if (playerGoal.length === 0) { showWin("YOU WIN!", "You cleared your goal pile. Glorious!"); return true; }
+    if (aiGoal.length === 0) { showWin("AI WINS", "The machine was merciless this time."); return true; }
+    return false;
+}
+
+function showWin(title, sub) {
+    const won = title === "YOU WIN!";
+    if (won) addScore(SCORE.WIN, document.getElementById("scoreDisplay"));
+    playWin(); saveHighScore();
+    document.getElementById("winText").textContent = title;
+    document.getElementById("winScore").textContent = won ? "Score: " + score : "";
+    const hs = getHighScores();
+    document.getElementById("winSub").textContent = (won && hs[0] && hs[0].score === score) ? "🏆 New high score!" : sub;
+    document.getElementById("winOverlay").classList.add("show");
+}
+
+function startNewGame() { document.getElementById("winOverlay").classList.remove("show"); deal(); }
+
+// ============================================================
+//  AI TURN
+// ============================================================
+function tryAiPlayCard(card, onSuccess) {
+    for (let c = 0; c < 5; c++) {
+        const needed = centerNeeded(c), cv = cardValue(card);
+        const isWild = card.startsWith(WILD) && !card.includes("(");
+        if (cv === needed || isWild) {
+            center[c].push(isWild ? WILD+"("+values[needed-1]+")" : card);
+            if (cardValue(center[c][center[c].length-1]) === 13) clearCenterStack(c);
+            onSuccess(); playAiTurn(); return true;
+        }
+    }
+    return false;
+}
+
+function aiTurn() {
+    document.getElementById("aiThinking").classList.add("show");
+    refillHandToFive(aiHand);
+    let anyPlayed = true;
+    while (anyPlayed) {
+        anyPlayed = false;
+        if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
+        for (let d = 0; d < 5 && !anyPlayed; d++) {
+            if (!aiDiscard[d].length) continue;
+            if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
+        }
+        if (anyPlayed) continue;
+        for (let i = 0; i < aiHand.length && !anyPlayed; i++) {
+            if (tryAiPlayCard(aiHand[i], () => aiHand.splice(i, 1))) anyPlayed = true;
+        }
+    }
+    if (aiHand.length > 0) {
+        const cNeeds = center.map((_, i) => centerNeeded(i));
+        const dScore = card => { const cv = cardValue(card); return Math.min(...cNeeds.map(n => Math.abs(cv - n))) * 2 + cv; };
+        const sScore = (d, card) => { const st = aiDiscard[d], cv = cardValue(card); if (!st.length) return 10; const tv = cardValue(st[st.length-1]); if (tv - cv === 1) return 25; if (tv === cv) return 20; if (tv - cv === 2) return 12; if (cv > tv) return 3; return 1; };
+        const bi = aiHand.reduce((b, c, i) => dScore(c) > dScore(aiHand[b]) ? i : b, 0);
+        const bs = [0,1,2,3,4].reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
+        aiDiscard[bs].push(aiHand.splice(bi, 1)[0]);
+    }
+    document.getElementById("aiThinking").classList.remove("show");
+    if (!checkWin()) startPlayerTurn();
+}
+
+// ============================================================
+//  PARTICLE SYSTEM
+// ============================================================
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let particles = [];
+let pAnimId = null;
+// Detect low-end device: limit particles and skip shadowBlur
+const isLowEnd = navigator.hardwareConcurrency <= 4 || /Android [1-7]\./.test(navigator.userAgent);
+const MAX_PARTICLES = isLowEnd ? 30 : 80;
+const USE_SHADOW = !isLowEnd;
+
+// Cache for center dropzone elements to avoid per-frame querySelector
+const _centerElCache = new Map();
+function getCachedCenterEl(stackIdx) {
+    if (_centerElCache.has(stackIdx)) return _centerElCache.get(stackIdx);
+    const el = document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"] .top-card`)
+             || document.querySelector(`[data-dropzone="center"][data-idx="${stackIdx}"]`);
+    if (el) _centerElCache.set(stackIdx, el);
+    return el || null;
+}
+// Invalidate cache after render
+function invalidateCenterElCache() { _centerElCache.clear(); }
+
+function resizeCanvas() {
+    pCanvas.width = window.innerWidth;
+    pCanvas.height = window.innerHeight;
+}
+resizeCanvas();
+let _resizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(resizeCanvas, 150); });
+
+// Ambient orbs that orbit around a card during a run
+function spawnRunParticles(cardEl, count) {
+    if (!cardEl) return;
+    const r = cardEl.getBoundingClientRect();
+    if (!r.width) return; // not visible
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    // Read stackIdx from the element's ancestor dropzone
+    const dzEl = cardEl.closest('[data-dropzone="center"]') || cardEl;
+    const stackIdx = parseInt(dzEl.getAttribute('data-idx') ?? '-1');
+
+    const existing = particles.filter(p => p.kind === 'orbit').length;
+    const toSpawn = Math.min(count, MAX_PARTICLES - existing - 10);
+    for (let i = 0; i < toSpawn; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 28 + Math.random() * 26;
+        const speed = (Math.random() > 0.5 ? 1 : -1) * (0.012 + Math.random() * 0.018);
+        const hue = 25 + Math.random() * 30;
+        particles.push({
+            kind: 'orbit',
+            cx, cy, angle, radius, speed,
+            size: 1.5 + Math.random() * 2.5,
+            alpha: 0.4 + Math.random() * 0.5,
+            hue,
+            stackIdx, // re-query position each frame using this
+        });
+    }
+    if (!pAnimId) tickParticles();
+}
+
+// Score particles that fly from card to score display
+function spawnScoreParticles(fromEl, count) {
+    if (!fromEl) return;
+    const scoreEl = document.getElementById('scoreDisplay');
+    if (!scoreEl) return;
+    const fr = fromEl.getBoundingClientRect();
+    const tr = scoreEl.getBoundingClientRect();
+    const tx = tr.left + tr.width / 2;
+    const ty = tr.top + tr.height / 2;
+    const toSpawn = Math.min(count, Math.max(1, MAX_PARTICLES - particles.length));
+    for (let i = 0; i < toSpawn; i++) {
+        const sx = fr.left + fr.width * Math.random();
+        const sy = fr.top + fr.height * Math.random();
+        const dur = 0.6 + Math.random() * 0.5;
+        const hue = 45 + Math.random() * 20;
+        particles.push({
+            kind: 'fly',
+            sx, sy, tx, ty,
+            x: sx, y: sy,
+            dur, elapsed: 0,
+            size: 2 + Math.random() * 2,
+            hue,
+            alpha: 0.9,
+        });
+    }
+    if (!pAnimId) tickParticles();
+}
+
+let lastPTime = 0;
+function tickParticles(ts = 0) {
+    const dt = Math.min((ts - lastPTime) / 1000, 0.05);
+    lastPTime = ts;
+
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+    particles = particles.filter(p => {
+        if (p.kind === 'orbit') {
+            // Re-query live card position each frame by stack index
+            if (p.stackIdx >= 0) {
+                const liveEl = getCachedCenterEl(p.stackIdx);
+                if (liveEl) {
+                    const r = liveEl.getBoundingClientRect();
+                    if (r.width > 0) {
+                        p.cx = r.left + r.width / 2;
+                        p.cy = r.top + r.height / 2;
+                    }
+                }
+            }
+            p.angle += p.speed * (1 + dt * 10);
+            const x = p.cx + Math.cos(p.angle) * p.radius;
+            const y = p.cy + Math.sin(p.angle) * p.radius * 0.55; // ellipse
+            // fade if run is gone
+            const alive = currentRunStackIdx >= 0 && runMultiplier > 0;
+            if (!alive) p.alpha -= dt * 1.2;
+            if (p.alpha <= 0) return false;
+            pCtx.save();
+            pCtx.globalAlpha = p.alpha;
+            pCtx.fillStyle = `hsl(${p.hue},95%,65%)`;
+            if (USE_SHADOW) { pCtx.shadowColor = `hsl(${p.hue},100%,60%)`; pCtx.shadowBlur = 6; }
+            pCtx.beginPath();
+            pCtx.arc(x, y, p.size, 0, Math.PI * 2);
+            pCtx.fill();
+            pCtx.restore();
+            return true;
+        }
+        if (p.kind === 'fly') {
+            p.elapsed += dt;
+            const t = Math.min(p.elapsed / p.dur, 1);
+            const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+            p.x = p.sx + (p.tx - p.sx) * ease;
+            p.y = p.sy + (p.ty - p.sy) * ease - Math.sin(t * Math.PI) * 40;
+            p.alpha = t < 0.8 ? 0.9 : 0.9 * (1 - (t - 0.8) / 0.2);
+            pCtx.save();
+            pCtx.globalAlpha = p.alpha;
+            pCtx.fillStyle = `hsl(${p.hue},100%,70%)`;
+            if (USE_SHADOW) { pCtx.shadowColor = `hsl(${p.hue},100%,65%)`; pCtx.shadowBlur = 8; }
+            pCtx.beginPath();
+            pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            pCtx.fill();
+            pCtx.restore();
+            if (t >= 1) return false;
+            return true;
+        }
+        return false;
+    });
+
+    if (particles.length > 0) {
+        pAnimId = requestAnimationFrame(tickParticles);
+    } else {
+        pAnimId = null;
+        pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    }
+}
+
+function clearOrbitParticles() {
+    // Fade out orbit particles naturally (they check currentRunStackIdx)
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+loadBestScore();
+loadBestRun();
+runWordEl = document.getElementById("runWord");
+deal();
+</script>
+</body>
+</html>

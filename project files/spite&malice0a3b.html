@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Spite & Malice</title>
+    <style>
+body {
+    background-color: #2b7a2b;
+    color: white;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 20px;
+}
+
+h3 { margin: 5px; }
+
+#aiDiscard, #center, #goalContainer, #playerDiscard, #hand, #actionButtons {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.card, .stack {
+    width: 50px;
+    height: 70px;
+    border-radius: 5px;
+    border: 1px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    font-size: 14px;
+}
+
+.card.selected { border: 2px solid red; }
+
+#playerGoal, #aiGoalCard {
+    width: 50px;
+    height: 70px;
+    border-radius: 5px;
+    border: 2px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    color: black;
+    font-weight: bold;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    font-size: 14px;
+}
+
+#goalContainer { gap: 20px; }
+
+#actionButtons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    background-color: #ffd700;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover { background-color: #ffb700; }
+    </style>
+</head>
+<body>
+
+<h3>AI Discard Stacks:</h3>
+<div id="aiDiscard"></div>
+
+<h3>Center Stacks:</h3>
+<div id="center"></div>
+
+<div id="goalContainer">
+    <div>
+        <h3>AI Goal:</h3>
+        <div id="aiGoalCard"></div>
+    </div>
+    <div>
+        <h3>Player Goal:</h3>
+        <div id="playerGoal"></div>
+    </div>
+</div>
+
+<h3>Player Discard Stacks:</h3>
+<div id="playerDiscard"></div>
+
+<h3>Player Hand:</h3>
+<div id="hand"></div>
+
+<div id="actionButtons"></div>
+
+<script>
+const suits = ["♠","♥","♦","♣"];
+const values = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+let deck = [];
+let recyclePile = [];
+let center = [[],[],[],[],[]];
+
+let playerGoal = [];
+let aiGoal = [];
+
+let playerHand = [];
+let aiHand = [];
+
+let playerDiscard = [[],[],[],[],[]];
+let aiDiscard = [[],[],[],[],[]];
+
+let selectedCard = null;
+let selectedSource = null;
+let playerTurn = true;
+
+// ====== Shuffle Helper ======
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// ====== Merge Recycle Immediately ======
+function mergeRecycleIntoDeck() {
+    if (recyclePile.length > 0) {
+        deck.push(...recyclePile);
+        shuffle(deck);
+        recyclePile = [];
+    }
+}
+
+// ====== Deck & Deal ======
+function createDeck() {
+    deck = [];
+    for (let s of suits) {
+        for (let v of values) {
+            deck.push(v + s);
+        }
+    }
+    shuffle(deck);
+}
+
+function deal() {
+    createDeck();
+    recyclePile = [];
+    playerGoal = deck.splice(0, 7);
+    aiGoal = deck.splice(0, 7);
+    playerHand = [];
+    aiHand = [];
+    center = [[],[],[],[],[]];
+    playerDiscard = [[],[],[],[],[]];
+    aiDiscard = [[],[],[],[],[]];
+    drawHand(playerHand);
+    drawHand(aiHand);
+    startPlayerTurn();
+}
+
+// ====== Hand & Turn ======
+function drawHand(hand) {
+    while (hand.length < 5) {
+        if (deck.length === 0) break;
+        hand.push(deck.shift());
+    }
+}
+
+function startPlayerTurn() {
+    playerTurn = true;
+    drawHand(playerHand);
+    selectedCard = null;
+    selectedSource = null;
+    render();
+}
+
+// ====== Card Values ======
+function cardValue(card) {
+    for (let i = values.length - 1; i >= 0; i--) {
+        if (card.startsWith(values[i])) return i + 1;
+    }
+    return 0;
+}
+
+// ====== Rendering ======
+function render() {
+
+    let goalDiv = document.getElementById("playerGoal");
+    goalDiv.textContent = playerGoal.length ? playerGoal[playerGoal.length - 1] : "Empty";
+    goalDiv.onclick = () => {
+        if (playerGoal.length && playerTurn)
+            selectCard(playerGoal[playerGoal.length - 1], "goal", playerGoal.length - 1);
+    };
+
+    let aiGoalDiv = document.getElementById("aiGoalCard");
+    aiGoalDiv.textContent = aiGoal.length ? aiGoal[aiGoal.length - 1] : "Empty";
+
+    let centerDiv = document.getElementById("center");
+    centerDiv.innerHTML = "";
+    center.forEach(stack => {
+        let div = document.createElement("div");
+        div.className = "stack";
+        div.textContent = stack.length ? stack[stack.length - 1] : "";
+        centerDiv.appendChild(div);
+    });
+
+    let handDiv = document.getElementById("hand");
+    handDiv.innerHTML = "";
+    playerHand.forEach((card, i) => {
+        let div = document.createElement("div");
+        div.className = "card";
+        div.textContent = card;
+        if (selectedCard === card && selectedSource?.type === "hand" && selectedSource.index === i)
+            div.classList.add("selected");
+        div.onclick = () => selectCard(card, "hand", i);
+        handDiv.appendChild(div);
+    });
+
+    let discardDiv = document.getElementById("playerDiscard");
+    discardDiv.innerHTML = "";
+    playerDiscard.forEach((stack, i) => {
+        let div = document.createElement("div");
+        div.className = "stack";
+        if (stack.length) {
+            div.textContent = stack[stack.length - 1];
+            div.onclick = () => selectCard(stack[stack.length - 1], "discard", i);
+        } else div.textContent = "Empty";
+        discardDiv.appendChild(div);
+    });
+
+    let aiDiscardDiv = document.getElementById("aiDiscard");
+    aiDiscardDiv.innerHTML = "";
+    aiDiscard.forEach(stack => {
+        let div = document.createElement("div");
+        div.className = "stack";
+        div.textContent = stack.length ? stack[stack.length - 1] + " (" + stack.length + ")" : "Empty";
+        aiDiscardDiv.appendChild(div);
+    });
+
+    showMoves();
+    checkWin();
+}
+
+// ====== Win Check ======
+function checkWin() {
+    if (playerGoal.length === 0) {
+        alert("YOU WIN!");
+        deal();
+        return;
+    }
+    if (aiGoal.length === 0) {
+        alert("AI WINS!");
+        deal();
+        return;
+    }
+}
+
+// ====== Card Selection ======
+function selectCard(card, source, index) {
+    if (!playerTurn) return;
+    selectedCard = card;
+    selectedSource = { type: source, index: index };
+    render();
+}
+
+// ====== Show Moves ======
+function showMoves() {
+    let container = document.getElementById("actionButtons");
+    container.innerHTML = "";
+    if (!selectedCard) return;
+
+    for (let i = 0; i < 5; i++) {
+        let stack = center[i];
+        let needed = stack.length === 0 ? 1 : cardValue(stack[stack.length - 1]) + 1;
+        if (cardValue(selectedCard) === needed) {
+            let btn = document.createElement("button");
+            btn.textContent = "Play to Center " + (i + 1);
+            btn.onclick = () => playToCenter(i);
+            container.appendChild(btn);
+        }
+    }
+
+    if (selectedSource.type === "hand" || selectedSource.type === "goal") {
+        for (let i = 0; i < 5; i++) {
+            let btn = document.createElement("button");
+            btn.textContent = "Discard to " + (i + 1);
+            btn.onclick = () => discardTo(i);
+            container.appendChild(btn);
+        }
+    }
+}
+
+// ====== Play to Center ======
+function playToCenter(i) {
+    center[i].push(selectedCard);
+
+    if (cardValue(selectedCard) === 13) {
+        recyclePile.push(...center[i]);
+        center[i] = [];
+        mergeRecycleIntoDeck();
+    }
+
+    removeSelected();
+    if (playerHand.length === 0) drawHand(playerHand);
+    render();
+}
+
+// ====== Discard ======
+function discardTo(i) {
+    let card = selectedCard;
+    removeSelected();
+    playerDiscard[i].push(card);
+    playerTurn = false;
+    render();
+    setTimeout(aiTurn, 500);
+}
+
+// ====== Remove Selected ======
+function removeSelected() {
+    if (!selectedSource) return;
+    if (selectedSource.type === "hand") playerHand.splice(selectedSource.index, 1);
+    else if (selectedSource.type === "discard") playerDiscard[selectedSource.index].pop();
+    else if (selectedSource.type === "goal") playerGoal.pop();
+    selectedCard = null;
+    selectedSource = null;
+}
+
+// ====== AI Turn ======
+function aiTurn() {
+    drawHand(aiHand);
+    let played = true;
+
+    while (played) {
+        played = false;
+
+        if (aiGoal.length) {
+            let goalCard = aiGoal[aiGoal.length - 1];
+            for (let c = 0; c < 5; c++) {
+                let stack = center[c];
+                let needed = stack.length === 0 ? 1 : cardValue(stack[stack.length - 1]) + 1;
+                if (cardValue(goalCard) === needed) {
+                    stack.push(goalCard);
+                    aiGoal.pop();
+                    if (cardValue(goalCard) === 13) {
+                        recyclePile.push(...stack);
+                        center[c] = [];
+                        mergeRecycleIntoDeck();
+                    }
+                    played = true;
+                    break;
+                }
+            }
+        }
+        if (played) continue;
+
+        for (let i = 0; i < aiHand.length; i++) {
+            let card = aiHand[i];
+            for (let c = 0; c < 5; c++) {
+                let stack = center[c];
+                let needed = stack.length === 0 ? 1 : cardValue(stack[stack.length - 1]) + 1;
+                if (cardValue(card) === needed) {
+                    stack.push(card);
+                    aiHand.splice(i, 1);
+                    if (cardValue(card) === 13) {
+                        recyclePile.push(...stack);
+                        center[c] = [];
+                        mergeRecycleIntoDeck();
+                    }
+                    played = true;
+                    break;
+                }
+            }
+            if (played) break;
+        }
+    }
+
+    if (aiHand.length)
+        aiDiscard[Math.floor(Math.random() * aiDiscard.length)].push(aiHand.shift());
+
+    startPlayerTurn();
+}
+
+deal();
+</script>
+</body>
+</html>

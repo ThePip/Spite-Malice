@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Card Game</title>
+<style>
+body { font-family: sans-serif; background:#0b5; text-align:center; }
+.row { display:flex; justify-content:center; margin:5px; flex-wrap:wrap; }
+.card {
+    width:60px; height:90px; background:white;
+    border:2px solid black; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    margin:4px; cursor:pointer; font-weight:bold;
+}
+.back { background:#333; }
+.selected { border:3px solid red; }
+.stack { min-height:100px; min-width:70px; border:2px dashed #333; margin:4px; }
+</style>
+</head>
+<body>
+
+<h2>Player Goal</h2>
+<div id="playerGoal" class="row"></div>
+
+<h2>Center</h2>
+<div id="center" class="row"></div>
+
+<h2>Player Hand</h2>
+<div id="playerHand" class="row"></div>
+
+<h2>Player Discard</h2>
+<div id="playerDiscard" class="row"></div>
+
+<script>
+let suits = ["♠","♥","♦","♣"];
+let deck = [];
+let recyclePile = [];
+let center = [[],[],[],[]];
+let playerHand = [];
+let playerGoal = [];
+let playerDiscard = [[],[],[],[]];
+let aiGoal = [];
+let aiHand = [];
+let aiDiscard = [[],[],[],[]];
+
+let selectedCard = null;
+let selectedSource = null;
+let selectedIndex = null;
+
+let playerTurn = true;
+
+/* =========================
+   SETUP
+========================= */
+
+function createDoubleDeck() {
+    deck = [];
+    for (let d = 0; d < 2; d++) {
+        for (let s of suits) {
+            for (let v = 1; v <= 13; v++) {
+                deck.push({value:v, suit:s});
+            }
+        }
+    }
+    shuffle(deck);
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+function mergeRecycleIntoDeck() {
+    if (recyclePile.length > 0) {
+        deck.push(...recyclePile);
+        shuffle(deck);
+        recyclePile = [];
+    }
+}
+
+function drawCard() {
+    if (deck.length === 0) mergeRecycleIntoDeck();
+    return deck.pop();
+}
+
+function startGame() {
+    createDoubleDeck();
+
+    playerHand = [];
+    playerGoal = [];
+    playerDiscard = [[],[],[],[]];
+    aiGoal = [];
+    aiHand = [];
+    aiDiscard = [[],[],[],[]];
+    center = [[],[],[],[]];
+    recyclePile = [];
+
+    for (let i=0;i<5;i++) playerHand.push(drawCard());
+    for (let i=0;i<5;i++) aiHand.push(drawCard());
+    for (let i=0;i<4;i++) playerGoal.push(drawCard());
+    for (let i=0;i<4;i++) aiGoal.push(drawCard());
+
+    playerTurn = true;
+    render();
+}
+
+/* =========================
+   CARD HELPERS
+========================= */
+
+function cardText(card){
+    const names = {1:"A",11:"J",12:"Q",13:"K"};
+    return (names[card.value] || card.value) + card.suit;
+}
+
+function canPlay(card, pile){
+    if (card.value === 13) return true;
+    if (pile.length === 0) return card.value === 1;
+    return card.value === pile[pile.length-1].value + 1;
+}
+
+/* =========================
+   PLAYER ACTIONS
+========================= */
+
+function selectHand(i){
+    if (!playerTurn) return;
+    selectedCard = playerHand[i];
+    selectedSource = "hand";
+    selectedIndex = i;
+    render();
+}
+
+function selectGoal(i){
+    if (!playerTurn) return;
+    selectedCard = playerGoal[i];
+    selectedSource = "goal";
+    selectedIndex = i;
+    render();
+}
+
+function selectDiscard(i){
+    if (!playerTurn) return;
+    if (playerDiscard[i].length === 0) return;
+    selectedCard = playerDiscard[i][playerDiscard[i].length-1];
+    selectedSource = "discard";
+    selectedIndex = i;
+    render();
+}
+
+function removeSelected(){
+    if (selectedSource === "hand") {
+        playerHand.splice(selectedIndex,1);
+    }
+    else if (selectedSource === "goal") {
+        playerGoal.splice(selectedIndex,1);
+    }
+    else if (selectedSource === "discard") {
+        playerDiscard[selectedIndex].pop();
+    }
+
+    selectedCard = null;
+    selectedSource = null;
+    selectedIndex = null;
+}
+
+function playToCenter(i){
+    if (!selectedCard || !playerTurn) return;
+
+    if (!canPlay(selectedCard, center[i])) return;
+
+    center[i].push(selectedCard);
+
+    if (selectedCard.value === 13){
+        recyclePile.push(...center[i]);
+        center[i] = [];
+        mergeRecycleIntoDeck();
+    }
+
+    removeSelected();
+    render();
+}
+
+function discardTo(i){
+    if (!selectedCard) return;
+
+    playerDiscard[i].push(selectedCard);
+    removeSelected();
+
+    playerTurn = false;
+    render();
+    setTimeout(aiTurn, 500);
+}
+
+/* =========================
+   AI TURN
+========================= */
+
+function aiTurn(){
+
+    // refill recycle at start of AI turn
+    mergeRecycleIntoDeck();
+
+    let played;
+    do {
+        played = false;
+
+        for (let pile of center){
+            if (aiGoal.length && canPlay(aiGoal[0], pile)){
+                let card = aiGoal.shift();
+                pile.push(card);
+                if (card.value===13){
+                    recyclePile.push(...pile);
+                    pile.length=0;
+                    mergeRecycleIntoDeck();
+                }
+                played=true;
+                break;
+            }
+        }
+
+        if (!played){
+            for (let pile of center){
+                for (let i=0;i<aiHand.length;i++){
+                    if (canPlay(aiHand[i], pile)){
+                        let card = aiHand.splice(i,1)[0];
+                        pile.push(card);
+                        if (card.value===13){
+                            recyclePile.push(...pile);
+                            pile.length=0;
+                            mergeRecycleIntoDeck();
+                        }
+                        played=true;
+                        break;
+                    }
+                }
+                if (played) break;
+            }
+        }
+
+    } while(played);
+
+    if (aiHand.length>0){
+        let stack = Math.floor(Math.random()*4);
+        aiDiscard[stack].push(aiHand.pop());
+    }
+
+    while (aiHand.length < 5){
+        let card = drawCard();
+        if (!card) break;
+        aiHand.push(card);
+    }
+
+    playerTurn = true;
+    mergeRecycleIntoDeck(); // also at start of player turn
+    render();
+}
+
+/* =========================
+   RENDER
+========================= */
+
+function render(){
+
+    // Player Goal
+    let goalHTML="";
+    playerGoal.forEach((card,i)=>{
+        goalHTML+=`
+        <div class="card ${selectedCard===card?'selected':''}"
+        onclick="selectGoal(${i})">
+        ${cardText(card)}
+        </div>`;
+    });
+    document.getElementById("playerGoal").innerHTML=goalHTML;
+
+    // Center
+    let centerHTML="";
+    center.forEach((pile,i)=>{
+        let top = pile[pile.length-1];
+        centerHTML+=`
+        <div class="stack" onclick="playToCenter(${i})">
+        ${top?cardText(top):""}
+        </div>`;
+    });
+    document.getElementById("center").innerHTML=centerHTML;
+
+    // Hand
+    let handHTML="";
+    playerHand.forEach((card,i)=>{
+        handHTML+=`
+        <div class="card ${selectedCard===card?'selected':''}"
+        onclick="selectHand(${i})">
+        ${cardText(card)}
+        </div>`;
+    });
+    document.getElementById("playerHand").innerHTML=handHTML;
+
+    // Discard
+    let discardHTML="";
+    playerDiscard.forEach((pile,i)=>{
+        let top = pile[pile.length-1];
+        discardHTML+=`
+        <div class="stack" onclick="selectDiscard(${i})">
+        ${top?cardText(top):""}
+        </div>`;
+    });
+    document.getElementById("playerDiscard").innerHTML=discardHTML;
+}
+
+startGame();
+</script>
+</body>
+</html>
