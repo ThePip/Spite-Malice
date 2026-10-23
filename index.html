@@ -19,12 +19,12 @@ body {
     background-image: radial-gradient(ellipse at 30% 20%, rgba(0,80,0,0.25) 0%, transparent 55%);
     color: white; font-family: 'Crimson Pro', serif;
     display: flex; flex-direction: column; align-items: center;
-    margin: 0; padding: 6px 8px 14px; min-height: 100vh; user-select: none;
+    margin: 0; padding: 6px 10px 14px; min-height: 100vh; user-select: none; width: 100%; box-sizing: border-box;
 }
 .suit-large { display: inline-block; transform: scale(1.2); transform-origin: center; line-height: 1; }
 
 /* Top bar */
-.top-bar { width: 100%; max-width: 550px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.top-bar { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 h1.game-title { font-family: 'Cinzel', serif; font-size: 22px; letter-spacing: 4px; color: var(--gold); text-shadow: 0 2px 8px rgba(0,0,0,0.5); margin: 0; text-transform: uppercase; flex: 1; text-align: center; }
 .icon-btn { background: none; border: none; color: var(--gold-light); font-size: 20px; cursor: pointer; padding: 4px 7px; border-radius: 4px; line-height: 1; flex-shrink: 0; transition: background 0.15s; }
 .icon-btn:hover { background: rgba(212,160,23,0.15); }
@@ -71,9 +71,9 @@ h1.game-title { font-family: 'Cinzel', serif; font-size: 22px; letter-spacing: 4
 }
 
 /* Labeled rows */
-.labeled-row { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; width: 100%; max-width: 550px; }
+.labeled-row { display: flex; align-items: center; gap: 4px; margin-bottom: 9px; width: 100%; }
 .side-label { writing-mode: vertical-rl; transform: rotate(180deg); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(212,160,23,0.7); white-space: nowrap; flex-shrink: 0; padding: 2px 0; }
-.cards-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-start; contain: layout; }
+.cards-row { display: flex; gap: 4px; flex-wrap: nowrap; align-items: flex-start; contain: layout; justify-content: flex-start; margin: 0 auto; }
 
 /* Goal row */
 #goalContainer { display: flex; gap: 22px; margin-bottom: 9px; align-items: flex-start; justify-content: center; flex-wrap: nowrap; }
@@ -93,10 +93,10 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
 @keyframes thinking { from { opacity: 0.4; } to { opacity: 1; } }
 
 /* Divider */
-.divider { width: 100%; max-width: 550px; height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 4px 0 6px; }
+.divider { width: 100%; height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 4px 0 6px; }
 
 /* Cards */
-.card, .top-card, .goal-card { width: 64px; height: 92px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; background-color: var(--card-white); color: var(--black); font-weight: bold; box-shadow: 2px 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 15px; flex-shrink: 0; position: relative; overflow: hidden; padding: 0; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.card, .top-card, .goal-card { width: var(--card-w, 64px); height: var(--card-h, 92px); border-radius: 6px; border: 1px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; background-color: var(--card-white); color: var(--black); font-weight: bold; box-shadow: 2px 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 15px; flex-shrink: 0; position: relative; overflow: hidden; padding: 0; transition: transform 0.12s ease, box-shadow 0.12s ease; }
 .card, .top-card { cursor: grab; }
 .card:hover, .top-card:hover { transform: translateY(-3px) scale(1.03); box-shadow: 3px 8px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8); z-index: 10; }
 .card.selected { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 3px rgba(212,160,23,0.5), 3px 8px 16px rgba(0,0,0,0.5); transform: translateY(-5px) scale(1.05); }
@@ -109,11 +109,11 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
 .pip-row { display: flex; justify-content: space-around; width: 100%; }
 .card-center-label { font-size: 15px; font-weight: bold; text-align: center; }
 .red { color: var(--red); } .black { color: #1a1a1a; }
-.stack-wrap, .goal-wrap { display: flex; flex-direction: column; align-items: center; width: 64px; position: relative; padding-bottom: 14px; }
-.stack-layers { position: absolute; top: 0; left: 0; width: 64px; height: 92px; pointer-events: none; }
-.stack-layer { position: absolute; width: 64px; height: 92px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.35); box-sizing: border-box; }
+.stack-wrap, .goal-wrap { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: var(--card-w, 64px); flex-shrink: 0; position: relative; padding-bottom: 14px; }
+.stack-layers { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: var(--card-w, 64px); height: var(--card-h, 92px); pointer-events: none; }
+.stack-layer { position: absolute; width: var(--card-w, 64px); height: var(--card-h, 92px); border-radius: 8px; border: 1px solid rgba(0,0,0,0.35); box-sizing: border-box; }
 .stack-layer:last-child { box-shadow: 2px 4px 8px rgba(0,0,0,0.45); }
-.stack-empty { width: 64px; height: 92px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 1px; }
+.stack-empty { width: var(--card-w, 64px); height: var(--card-h, 92px); flex-shrink: 0; border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.3); font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 1px; }
 .goal-card { cursor: pointer; }
 .goal-card:hover { transform: translateY(-3px); box-shadow: 3px 8px 16px rgba(0,0,0,0.5); }
 .draw-card { background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%) !important; color: var(--gold) !important; font-family: 'Cinzel', serif !important; font-size: 9px !important; text-align: center; line-height: 1.4; letter-spacing: 1px; box-shadow: 2px 2px 8px rgba(0,0,0,0.6), inset 0 0 20px rgba(100,50,200,0.2) !important; border: 1px solid rgba(212,160,23,0.3) !important; }
@@ -138,20 +138,23 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
 /* Settings overlay */
 #settingsOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
 #settingsOverlay.show { display: flex; }
-.settings-box { background: linear-gradient(135deg, #1a1a2e, #162a16); border: 2px solid var(--gold); border-radius: 12px; padding: 32px 44px; min-width: 280px; box-shadow: 0 0 60px rgba(212,160,23,0.3); }
-.settings-box h2 { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold-light); margin: 0 0 22px; text-align: center; letter-spacing: 3px; }
-.settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(212,160,23,0.8); letter-spacing: 1px; }
+.settings-box { background: linear-gradient(135deg, #1a1a2e, #162a16); border: 2px solid var(--gold); border-radius: 12px; padding: 18px 20px 16px; min-width: 260px; max-width: 92vw; box-shadow: 0 0 60px rgba(212,160,23,0.3); }
+.settings-box h2 { font-family: 'Cinzel', serif; font-size: 16px; color: var(--gold-light); margin: 0 0 12px; text-align: center; letter-spacing: 3px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(212,160,23,0.8); letter-spacing: 1px; }
 .toggle-btn { background: rgba(212,160,23,0.15); border: 1px solid rgba(212,160,23,0.4); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; padding: 5px 14px; border-radius: 4px; cursor: pointer; transition: all 0.15s; min-width: 60px; }
 .toggle-btn:hover { background: rgba(212,160,23,0.3); }
 .toggle-btn.on { background: rgba(212,160,23,0.35); color: #fff; }
-.settings-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 20px 0; }
-.hs-title { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px; color: rgba(212,160,23,0.6); text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+.settings-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(212,160,23,0.3), transparent); margin: 10px 0; }
+.settings-pair { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.hs-title { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 2px; color: var(--gold-light); margin: 0; text-transform: uppercase; font-weight: 700; }
+.hs-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .hs-list { list-style: none; padding: 0; margin: 0 0 14px; }
 .hs-list li { display: flex; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 12px; color: rgba(255,255,255,0.75); padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .hs-list li:first-child { color: var(--gold-light); }
 .hs-list li:last-child { border-bottom: none; }
 .hs-list li span:last-child { color: var(--gold-light); }
 .hs-empty { font-family: 'Cinzel', serif; font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 14px; }
+.hs-run { color: #ff9f3a; }
 .scoring-note { font-family: 'Crimson Pro', serif; font-size: 11px; color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 16px; line-height: 1.5; }
 .wild-select { background: rgba(212,160,23,0.1); border: 1px solid rgba(212,160,23,0.4); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; padding: 5px 8px; border-radius: 4px; cursor: pointer; min-width: 100px; }
 .wild-select option { background: #1a1a2e; color: var(--gold-light); }
@@ -680,10 +683,16 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
 <div id="settingsOverlay">
     <div class="settings-box">
         <h2>Settings</h2>
-        <div class="settings-row">Sound <button class="toggle-btn on" id="soundToggle" onclick="toggleMute()">On</button></div>
-        <div class="settings-row">Decks &amp; Goal <button class="toggle-btn" id="deckToggle" onclick="toggleTripleModeUI()">2 Decks</button></div>
-        <div class="settings-row">Wild Card
-            <select class="wild-select" id="wildSelect">
+        <div class="settings-pair">
+            <button class="toggle-btn on" id="soundToggle" onclick="toggleMute()" title="Sound" style="min-width:34px;padding:4px 8px;font-size:15px">🔊</button>
+            <span style="font-family:'Cinzel',serif;font-size:12px;color:rgba(212,160,23,0.8);letter-spacing:1px;flex:1;text-align:right;padding-right:8px">Hand &amp; Stacks</span>
+            <button class="toggle-btn" id="cardsToggle" onclick="toggleCardsUI()" style="min-width:34px">5</button>
+        </div>
+        <div class="settings-pair">
+            <span style="font-family:'Cinzel',serif;font-size:12px;color:rgba(212,160,23,0.8);letter-spacing:1px;flex:0 0 auto;margin-right:6px">Decks</span>
+            <button class="toggle-btn" id="deckToggle" onclick="toggleTripleModeUI()" style="min-width:34px;margin-right:4px">2</button>
+            <span style="font-family:'Cinzel',serif;font-size:12px;color:rgba(212,160,23,0.8);letter-spacing:1px;flex:0 0 auto;margin-right:4px">Wilds</span>
+            <select class="wild-select" id="wildSelect" style="flex:1">
                 <option value="joker">🤪 Joker</option>
                 <option value="A">A — Ace</option>
                 <option value="2">2 — Two</option>
@@ -700,19 +709,27 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
                 <option value="K">K — King</option>
             </select>
         </div>
-        <div id="settingsChangedNote" style="display:none;font-family:'Crimson Pro',serif;font-size:11px;color:#f0a040;text-align:center;margin:0 0 10px;padding:6px 8px;border:1px solid rgba(240,160,64,0.35);border-radius:4px;background:rgba(240,160,64,0.08)">⚠ Deck/Wild changes need a new game</div>
-        <button id="applySettingsBtn" onclick="applySettings()" style="width:100%;margin-bottom:8px;background:linear-gradient(to bottom,rgba(212,160,23,0.45),rgba(212,160,23,0.25));font-size:12px;padding:8px">▶ Apply &amp; New Game</button>
-        <button onclick="restartGame()" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;opacity:0.85">🔄 Restart Current Game</button>
+        <div id="settingsChangedNote" style="display:none;font-family:'Crimson Pro',serif;font-size:11px;color:#f0a040;text-align:center;margin:0 0 10px;padding:6px 8px;border:1px solid rgba(240,160,64,0.35);border-radius:4px;background:rgba(240,160,64,0.08)">⚠ Cards/Deck/Wild changes need a new game</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button id="applySettingsBtn" onclick="applySettings()" style="flex:1;background:linear-gradient(to bottom,rgba(212,160,23,0.45),rgba(212,160,23,0.25));font-size:11px;padding:7px">▶ Apply &amp; New</button>
+            <button onclick="restartGame()" style="flex:1;font-size:11px;padding:7px;opacity:0.85">🔄 Restart Current</button>
+        </div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
             <button onclick="saveGameToFile()" style="flex:1;font-size:11px;padding:6px;opacity:0.85">💾 Save Game</button>
             <button onclick="loadGameFromFile()" style="flex:1;font-size:11px;padding:6px;opacity:0.85">📂 Load Game</button>
         </div>
         <input type="file" id="loadFileInput" accept=".spm" style="display:none" onchange="handleLoadFile(event)">
-        <div class="settings-divider"></div>        <div class="hs-title"><span id="hsModeLabel">2-Deck Scores</span></div>
+        <div class="settings-divider"></div>
+        <div class="hs-title-row">
+            <span class="hs-title" id="hsModeLabel">2-Deck Scores</span>
+            <button onclick="clearHighScores()" style="font-size:9px;padding:3px 8px;opacity:0.7">Clear</button>
+        </div>
         <ul class="hs-list" id="hsList"></ul>
-        <div class="scoring-note">Center play +1 &nbsp;·&nbsp; Block AI +55<br>Goal play +70 &nbsp;·&nbsp; Center clear +45 &nbsp;·&nbsp; Win +300<br>Discard clear: +10 (2) · +20 (3) · +25 (4+)<br>Run bonus: 2nd card on a stack starts the run<br>×level every 3 cards · Block AI: +1 level<br>Discard clear: +1 or +2 levels<br>Multiplier: 1→2→4→8→16→32→64→128×</div>
-        <button onclick="clearHighScores()" style="width:100%;margin-bottom:10px;font-size:10px;padding:5px;opacity:0.7">Clear Scores</button>
-        <button onclick="openRules()" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;opacity:0.85">📖 How to Play</button>
+        <div class="scoring-note" id="scoringNote" style="display:none">Center play +1 &nbsp;·&nbsp; Block AI +55<br>Goal play +70 &nbsp;·&nbsp; Center clear +45 &nbsp;·&nbsp; Win +300<br>Discard clear: +10 (2) · +20 (3) · +25 (4+)<br>Run bonus: 2nd card on a stack starts the run<br>×level every 3 cards · Block AI: +1 level<br>Discard clear: +1 or +2 levels<br>Multiplier: 1→2→4→8→16→32→64→128×</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button onclick="openRules()" style="flex:1;font-size:11px;padding:6px;opacity:0.85">📖 How to Play</button>
+            <button onclick="toggleScoringNote()" style="flex:1;font-size:11px;padding:6px;opacity:0.7">📊 Scoring</button>
+        </div>
         <button onclick="closeSettings();openMpLobby();" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;background:linear-gradient(to bottom,rgba(50,180,50,0.2),rgba(50,180,50,0.08));border-color:rgba(50,180,50,0.4)">👥 Multiplayer</button>
         <button onclick="closeSettings()" style="width:100%">Close</button>
     </div>
@@ -784,7 +801,8 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
 // ============================================================
 //  SOUND ENGINE
 // ============================================================
-let audioCtx = null, muted = false, tripleMode = false;
+let audioCtx = null, muted = false;
+let numDecks = 2, handSize = 5;   // handSize = cards in hand = number of build stacks = discard stacks per player
 let _audioReady = false; // true once the context has been resumed after a user gesture
 
 function getCtx() {
@@ -865,24 +883,44 @@ function toggleMute() {
     muted = !muted;
     document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
     const st = document.getElementById("soundToggle");
-    st.textContent = muted ? "Off" : "On";
+    st.textContent = muted ? "🔇" : "🔊";
     st.classList.toggle("on", !muted);
 }
 
 // pendingSettings holds UI selections before Apply is pressed
-let pendingTriple = false;
-let pendingWild   = "joker";
+let pendingHand  = 5;
+let pendingDecks = 2;
+let pendingWild  = "joker";
 
-function toggleTripleModeUI() {
-    pendingTriple = !pendingTriple;
-    const btn = document.getElementById("deckToggle");
-    btn.textContent = pendingTriple ? "3 Decks" : "2 Decks";
-    btn.classList.toggle("on", pendingTriple);
+// 4-card games use 1 or 2 decks; 5-card games use 2 or 3 decks
+const validDecksFor = h => h === 4 ? [1, 2] : [2, 3];
+const goalSizeFor   = n => n === 1 ? 7 : (n === 3 ? 26 : 13);
+
+function refreshModeButtons() {
+    const hb = document.getElementById("cardsToggle");
+    if (hb) { hb.textContent = String(pendingHand); hb.classList.toggle("on", pendingHand === 4); }
+    const db = document.getElementById("deckToggle");
+    if (db) { db.textContent = String(pendingDecks); db.classList.toggle("on", pendingDecks !== 2); }
+}
+
+function toggleCardsUI() {
+    pendingHand = pendingHand === 5 ? 4 : 5;
+    if (!validDecksFor(pendingHand).includes(pendingDecks)) pendingDecks = 2;
+    refreshModeButtons();
     checkSettingsChanged();
 }
 
+function toggleTripleModeUI() {   // cycles the deck count within the options valid for the card count
+    const ok = validDecksFor(pendingHand);
+    pendingDecks = pendingDecks === ok[0] ? ok[1] : ok[0];
+    refreshModeButtons();
+    checkSettingsChanged();
+}
+
+const settingsChanged = () => pendingHand !== handSize || pendingDecks !== numDecks || pendingWild !== wildCardSetting;
+
 function checkSettingsChanged() {
-    const changed = pendingTriple !== tripleMode || pendingWild !== wildCardSetting;
+    const changed = settingsChanged();
     const note = document.getElementById("settingsChangedNote");
     const applyBtn = document.getElementById("applySettingsBtn");
     if (note) note.style.display = changed ? "block" : "none";
@@ -890,10 +928,10 @@ function checkSettingsChanged() {
 }
 
 function applySettings() {
-    const changed = pendingTriple !== tripleMode || pendingWild !== wildCardSetting;
-    if (changed) {
+    if (settingsChanged()) {
         if (!confirm("Apply settings and start a new game now?")) return;
-        tripleMode      = pendingTriple;
+        handSize        = pendingHand;
+        numDecks        = pendingDecks;
         wildCardSetting = pendingWild;
         loadBestScore(); loadBestRun();
         closeSettings();
@@ -908,6 +946,7 @@ function applySettings() {
 // ============================================================
 const SCORE = { CENTER_CLEAR:45, DISCARD_CLEAR:25, GOAL_PLAY:70, WIN:300 };
 let score = 0;
+let gameBestRun = 1;   // best run multiplier reached in the current game
 let flashQueue = [], flashTimer = null;
 
 function addScore(pts, originEl, isRun = false) {
@@ -937,7 +976,9 @@ function drainFlashQueue() {
 }
 
 const wildKey    = () => wildCardSetting === "joker" ? "J" : wildCardSetting;
-const bestRunKey = () => `smBestRun${tripleMode ? 3 : 2}_${wildKey()}`;
+// 5-card games keep the original keys (2 / 3); 4-card games get their own (4c1 / 4c2)
+const modeKey = () => handSize === 5 ? String(numDecks) : `4c${numDecks}`;
+const bestRunKey = () => `smBestRun${modeKey()}_${wildKey()}`;
 
 function loadBestRun() {
     const v = parseInt(localStorage.getItem(bestRunKey())) || 1;
@@ -945,6 +986,7 @@ function loadBestRun() {
 }
 
 function trackBestRun(multVal) {
+    if (multVal > gameBestRun) gameBestRun = multVal;
     const stored = parseInt(localStorage.getItem(bestRunKey())) || 1;
     if (multVal > stored) {
         localStorage.setItem(bestRunKey(), multVal);
@@ -952,12 +994,12 @@ function trackBestRun(multVal) {
     }
 }
 
-const hsKey = () => `smHighScores${tripleMode ? 3 : 2}_${wildKey()}`;
+const hsKey = () => `smHighScores${modeKey()}_${wildKey()}`;
 const getHighScores = () => { try { return JSON.parse(localStorage.getItem(hsKey())) || []; } catch(e) { return []; } };
 
 function saveHighScore() {
     const hs = getHighScores();
-    hs.push({ score, date: new Date().toLocaleDateString() });
+    hs.push({ score, run: gameBestRun, date: new Date().toLocaleDateString() });
     hs.sort((a,b) => b.score - a.score);
     hs.splice(10);
     localStorage.setItem(hsKey(), JSON.stringify(hs));
@@ -982,22 +1024,23 @@ function renderHsList() {
     const list = document.getElementById("hsList");
     const hs = getHighScores();
     const wildLabel = wildCardSetting === "joker" ? "Joker Wild" : wildCardSetting + "s Wild";
-    document.getElementById("hsModeLabel").textContent = `${tripleMode ? "3" : "2"}-Deck · ${wildLabel}`;
+    document.getElementById("hsModeLabel").textContent = `${handSize}-Card · ${numDecks}-Deck · ${wildLabel}`;
     if (!hs.length) { list.innerHTML = `<p class='hs-empty'>No scores yet — win a game!</p>`; return; }
-    list.innerHTML = hs.map((h,i) => `<li><span>#${i+1}&nbsp; ${h.date}</span><span>${h.score}</span></li>`).join("");
+    list.innerHTML = hs.map((h,i) => `<li><span>#${i+1}&nbsp; ${h.date}</span><span class="hs-run">${h.run ? "×" + h.run : "—"}</span><span>${h.score}</span></li>`).join("");
 }
 
 // ============================================================
 //  SETTINGS
 // ============================================================
 
+function toggleScoringNote() { var n = document.getElementById('scoringNote'); n.style.display = n.style.display === 'none' ? 'block' : 'none'; }
+
 const openSettings = () => {
     renderHsList();
-    pendingTriple = tripleMode;
+    pendingHand   = handSize;
+    pendingDecks  = numDecks;
     pendingWild   = wildCardSetting;
-    const btn = document.getElementById("deckToggle");
-    btn.textContent = tripleMode ? "3 Decks" : "2 Decks";
-    btn.classList.toggle("on", tripleMode);
+    refreshModeButtons();
     const sel = document.getElementById("wildSelect");
     if (sel) {
         sel.value = wildCardSetting;
@@ -1057,7 +1100,7 @@ let runWordEl = null;
 let runWordFadeTimer = null;
 
 function resetRunTracking() {
-    runStackCounts = [0, 0, 0, 0, 0];
+    runStackCounts = new Array(handSize).fill(0);
     runMultiplier = 0;
     currentRunStackIdx = -1;
     hideRunWord();
@@ -1490,9 +1533,40 @@ function renderCardFace(el, card, listHtml) {
 // ============================================================
 //  DECK & DEAL
 // ============================================================
+// Optimistic check: even if every non-goal card were freely available, can a build stack
+// get from start to finish? If a rank is fully buried in the goal piles (and wilds can't
+// cover it), the deal is dead from the start.
+function dealIsDead(gA, gB) {
+    const first = (wildCardSetting !== "joker" && values.indexOf(wildCardSetting) === 0) ? 2 : 1;
+    const seq = [first];
+    while (!isCenterComplete(seq[seq.length - 1]) && seq.length < 20) seq.push(nextCenterValue(seq[seq.length - 1]));
+    const a = gA.slice(), b = gB.slice();
+    const perRank   = 4 * numDecks;
+    const wildTotal = (wildCardSetting === "joker" ? 2 : 8) * numDecks;
+    const isW = c => c.startsWith(WILD);
+    for (let cycle = 0; cycle < 400; cycle++) {
+        if (!a.length && !b.length) return false;
+        let popped = false;
+        for (const n of seq) {
+            const ta = a.length ? a[a.length - 1] : null, tb = b.length ? b[b.length - 1] : null;
+            if (ta && (isW(ta) ? wildCanFillSlotNoFollow(n) : cardValue(ta) === n)) { a.pop(); popped = true; continue; }
+            if (tb && (isW(tb) ? wildCanFillSlotNoFollow(n) : cardValue(tb) === n)) { b.pop(); popped = true; continue; }
+            const all = a.concat(b);
+            const inGoals = all.filter(c => !isW(c) && cardValue(c) === n).length;
+            if (perRank - inGoals > 0) continue;
+            const goalWilds = all.filter(isW).length;
+            if (wildTotal - goalWilds > 0 && wildCanFillSlotNoFollow(n)) continue;
+            return true;
+        }
+        if (!popped) return false;
+    }
+    return false;
+}
+
 function deal() {
-    const deckCount = tripleMode ? 3 : 2;
-    const goalSize  = tripleMode ? 26 : 13;
+    const deckCount = numDecks;
+    const goalSize  = goalSizeFor(numDecks);
+    for (let _try = 0; _try < 60; _try++) {
     deck = [];
     for (let d = 0; d < deckCount; d++) {
         if (wildCardSetting === "joker") {
@@ -1510,11 +1584,13 @@ function deal() {
     }
     shuffle(deck); recyclePile = [];
     playerGoal = deck.splice(0, goalSize); aiGoal = deck.splice(0, goalSize);
+    if (!dealIsDead(playerGoal, aiGoal)) break;   // re-shuffle the rare deal that can never get going
+    }
     playerHand = []; aiHand = [];
-    center = Array.from({length:5}, () => []);
-    playerDiscard = Array.from({length:5}, () => []);
-    aiDiscard = Array.from({length:5}, () => []);
-    maxDiscardDepth = Array.from({length:5}, () => 0);
+    center = Array.from({length:handSize}, () => []);
+    playerDiscard = Array.from({length:handSize}, () => []);
+    aiDiscard = Array.from({length:handSize}, () => []);
+    maxDiscardDepth = Array.from({length:handSize}, () => 0);
     selectedCard = null; selectedSource = null;
     expandedPlayerDiscards = new Set(); expandedAiDiscards = new Set();
     score = 0; document.getElementById("scoreDisplay").textContent = 0;
@@ -1522,6 +1598,7 @@ function deal() {
     prevHandSnapshot = [];
     gameOver = false;
     resetRunTracking();
+    gameBestRun = 1;
 
     // In MP mode P1 is canonical host — always fill BOTH hands here, before any guards run
     if (typeof mpActive === 'function' && mpActive()) {
@@ -1569,7 +1646,7 @@ function mpDetermineFirstPlayer() {
 }
 
 function refillHandToFive(hand) {
-    while (hand.length < 5) { tryRefillDeck(); if (!deck.length) break; hand.push(deck.shift()); }
+    while (hand.length < handSize) { tryRefillDeck(); if (!deck.length) break; hand.push(deck.shift()); }
 }
 
 function startPlayerTurn() {
@@ -1613,7 +1690,7 @@ function initDrag(card, source, clientX, clientY, originEl) {
     // Render into ghost — renderCardFace stomps position/display so restore after
     renderCardFace(dragGhostEl, card, null);
     dragGhostEl.style.position = "fixed";
-    dragGhostEl.style.width = "64px";
+    dragGhostEl.style.width = getComputedStyle(document.documentElement).getPropertyValue("--card-w").trim();
     dragGhostEl.style.height = "92px";
     dragGhostEl.style.backgroundColor = "var(--card-white)";
     dragGhostEl.style.transform = "rotate(4deg) scale(1.08)";
@@ -1694,7 +1771,7 @@ const centerNeeded = i => {
 function highlightDropZones(card) {
     const cv = cardValue(card);
     const isUnresolvedWild = card.startsWith(WILD) && !card.includes("(");
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < handSize; i++) {
         const needed = centerNeeded(i);
         const canPlay = isUnresolvedWild ? wildCanFillSlotNoFollow(needed) : (cv === needed);
         if (canPlay) {
@@ -1733,7 +1810,8 @@ function buildSlivers(count) {
     }
     // Wrap needs enough height to show the deepest layer peeking out
     const maxOffset = SLIVER_OFFSETS[visCount - 1];
-    wrap.style.height = (92 + maxOffset) + "px";
+    const _ch = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h')) || 92;
+    wrap.style.height = (_ch + maxOffset) + 'px';
     return wrap;
 }
 
@@ -1785,6 +1863,22 @@ function buildGoalDiv(cardText, count, extraClass, onClick, isDraggable) {
 //  RENDER
 // ============================================================
 function render() {
+    (function resizeCards() {
+        const sideLabel = 28, outerPad = 10, gap = 6;
+        const vw = window.innerWidth - outerPad * 2 - sideLabel;
+        const n = handSize;
+        const rawW = Math.floor((vw - gap * (n - 1)) / n);
+        const scale = n <= 4 ? 0.87 : 1.0;
+        const maxW  = n <= 4 ? 80 : 96;
+        const w = Math.min(Math.max(Math.round(rawW * scale), 44), maxW);
+        const h = Math.round(w * 92 / 64);
+        const root = document.documentElement;
+        root.style.setProperty('--card-w', w + 'px');
+        root.style.setProperty('--card-h', h + 'px');
+        document.body.style.padding = '6px ' + outerPad + 'px 14px';
+        const rowW = (n * w + (n - 1) * gap) + 'px';
+        document.querySelectorAll('.cards-row').forEach(r => { r.style.width = rowW; });
+    })();
     const $ = id => document.getElementById(id);
 
     // AI goal
@@ -1891,7 +1985,7 @@ function showMoves() {
     }
     const cv = cardValue(selectedCard);
     const isUnresolvedWild = selectedCard.startsWith(WILD) && !selectedCard.includes("(");
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < handSize; i++) {
         const needed = centerNeeded(i);
         const canPlay = isUnresolvedWild ? wildCanFillSlotNoFollow(needed) : (cv === needed);
         if (canPlay) {
@@ -1900,7 +1994,7 @@ function showMoves() {
     }
     // Discard buttons only allowed from hand, and only when no uncovered wild sits on centre
     if (selectedSource && selectedSource.type === "hand" && !topWildBlocking) {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < handSize; i++) {
             const btn = document.createElement("button"); btn.textContent = "▽"+(i+1); btn.onclick = () => discardTo(i); container.appendChild(btn);
         }
     }
@@ -2018,7 +2112,7 @@ function wildCanFillSlot(needed, forPlayer = false, forAI = false) {
     // Collect all centre stacks that will have an uncovered wild AFTER this play:
     // existing uncovered wilds + the new one we're about to place.
     const neededVals = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < handSize; i++) {
         if (center[i].length > 0 && center[i][center[i].length - 1].startsWith(WILD)) {
             neededVals.push(centerNeeded(i));
         }
@@ -2227,7 +2321,7 @@ function saveGameToFile() {
     const state = {
         v: 1,
         savedAt: new Date().toISOString(),
-        settings: { tripleMode, wildCardSetting },
+        settings: { numDecks, handSize, wildCardSetting },
         game: {
             deck, recyclePile,
             center, playerGoal, aiGoal,
@@ -2235,7 +2329,7 @@ function saveGameToFile() {
             playerDiscard, aiDiscard,
             maxDiscardDepth,
             score, playerTurn,
-            runStackCounts, runMultiplier, currentRunStackIdx,
+            runStackCounts, runMultiplier, currentRunStackIdx, gameBestRun,
         }
     };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
@@ -2262,7 +2356,8 @@ function handleLoadFile(e) {
             const state = JSON.parse(evt.target.result);
             if (!state.v || !state.game || !state.settings) throw new Error("Invalid save file.");
 
-            tripleMode      = state.settings.tripleMode;
+            if (state.settings.numDecks) { numDecks = state.settings.numDecks; handSize = state.settings.handSize || 5; }
+            else { numDecks = state.settings.tripleMode ? 3 : 2; handSize = 5; }
             wildCardSetting = state.settings.wildCardSetting;
 
             const g = state.game;
@@ -2278,7 +2373,8 @@ function handleLoadFile(e) {
             maxDiscardDepth    = g.maxDiscardDepth;
             score              = g.score;
             playerTurn         = g.playerTurn;
-            runStackCounts     = g.runStackCounts     || [0,0,0,0,0];
+            runStackCounts     = g.runStackCounts     || new Array(handSize).fill(0);
+            gameBestRun        = g.gameBestRun        || 1;
             runMultiplier      = g.runMultiplier      || 0;
             currentRunStackIdx = g.currentRunStackIdx ?? -1;
 
@@ -2334,7 +2430,7 @@ function aiWildCanFillSlot(needed) {
 
     // Existing uncovered wild-tops on the centre
     const neededVals = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < handSize; i++) {
         if (center[i].length > 0 && center[i][center[i].length - 1].startsWith(WILD)) {
             neededVals.push(centerNeeded(i));
         }
@@ -2346,7 +2442,7 @@ function aiWildCanFillSlot(needed) {
 }
 
 function tryAiPlayCard(card, onSuccess) {
-    for (let c = 0; c < 5; c++) {
+    for (let c = 0; c < handSize; c++) {
         const needed = centerNeeded(c), cv = cardValue(card);
         const isWild = card.startsWith(WILD) && !card.includes("(");
         // Wilds: cannot open an empty stack; use the stricter AI-only check.
@@ -2370,7 +2466,7 @@ function aiTurn() {
     while (anyPlayed) {
         anyPlayed = false;
         if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
-        for (let d = 0; d < 5 && !anyPlayed; d++) {
+        for (let d = 0; d < handSize && !anyPlayed; d++) {
             if (!aiDiscard[d].length) continue;
             if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
         }
@@ -2387,7 +2483,7 @@ function aiTurn() {
     let coverProgress = true;
     while (coverProgress && centreHasTopWild()) {
         coverProgress = false;
-        for (let c = 0; c < 5; c++) {
+        for (let c = 0; c < handSize; c++) {
             if (!center[c].length || !center[c][center[c].length-1].startsWith(WILD)) continue;
             const needed = centerNeeded(c);
             let covered = false;
@@ -2409,7 +2505,7 @@ function aiTurn() {
             }
             // Try discards
             if (!covered) {
-                for (let d = 0; d < 5; d++) {
+                for (let d = 0; d < handSize; d++) {
                     if (!aiDiscard[d].length) continue;
                     const dc = aiDiscard[d][aiDiscard[d].length-1];
                     if (!dc.startsWith(WILD) && cardValue(dc) === needed) {
@@ -2431,7 +2527,7 @@ function aiTurn() {
         while (anyPlayed) {
             anyPlayed = false;
             if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
-            for (let d = 0; d < 5 && !anyPlayed; d++) {
+            for (let d = 0; d < handSize && !anyPlayed; d++) {
                 if (!aiDiscard[d].length) continue;
                 if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
             }
@@ -2449,7 +2545,7 @@ function aiTurn() {
         // Collect values needed to cover any current centre wild-top.
         // Discarding those cards would leave the centre permanently blocked.
         const wildCoverNeeds = new Set();
-        for (let c = 0; c < 5; c++) {
+        for (let c = 0; c < handSize; c++) {
             if (center[c].length > 0 && center[c][center[c].length-1].startsWith(WILD)) {
                 wildCoverNeeds.add(centerNeeded(c));
             }
@@ -2466,7 +2562,7 @@ function aiTurn() {
         };
         const sScore = (d, card) => { const st = aiDiscard[d], cv = cardValue(card); if (!st.length) return 10; const tv = cardValue(st[st.length-1]); if (tv - cv === 1) return 25; if (tv === cv) return 20; if (tv - cv === 2) return 12; if (cv > tv) return 3; return 1; };
         const bi = aiHand.reduce((b, c, i) => dScore(c) > dScore(aiHand[b]) ? i : b, 0);
-        const bs = [0,1,2,3,4].reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
+        const bs = Array.from({length: handSize}, (_, k) => k).reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
         aiDiscard[bs].push(aiHand.splice(bi, 1)[0]);
     }
     document.getElementById("aiThinking").classList.remove("show");
@@ -2750,7 +2846,7 @@ function mpFullStateForOpponent() {
         // shared
         deck, recyclePile, center,
         score, runStackCounts, runMultiplier, currentRunStackIdx,
-        settings: { tripleMode, wildCardSetting },
+        settings: { numDecks, handSize, wildCardSetting },
         // p1Turn = true means it is P1's turn in the canonical game
         p1Turn: mp.myRole === 'p1' ? playerTurn : !playerTurn,
         p1Hand: mp.myRole === 'p1' ? playerHand : aiHand,
@@ -2759,8 +2855,8 @@ function mpFullStateForOpponent() {
         p2Goal: mp.myRole === 'p1' ? aiGoal     : playerGoal,
         p1Discard: mp.myRole === 'p1' ? playerDiscard : aiDiscard,
         p2Discard: mp.myRole === 'p1' ? aiDiscard     : playerDiscard,
-        p1MaxDepth: mp.myRole === 'p1' ? maxDiscardDepth : Array(5).fill(0),
-        p2MaxDepth: mp.myRole === 'p1' ? Array(5).fill(0) : maxDiscardDepth,
+        p1MaxDepth: mp.myRole === 'p1' ? maxDiscardDepth : Array(handSize).fill(0),
+        p2MaxDepth: mp.myRole === 'p1' ? Array(handSize).fill(0) : maxDiscardDepth,
         myName: mp.myName, oppName: mp.oppName,
         myScore: score,  // sender's own score so receiver can display it
         p1StartsFirst: mp.p1StartsFirst,
@@ -2769,7 +2865,8 @@ function mpFullStateForOpponent() {
 
 function mpApplyRemoteState(msg) {
     if (msg.settings) {
-        tripleMode      = msg.settings.tripleMode;
+        if (msg.settings.numDecks) { numDecks = msg.settings.numDecks; handSize = msg.settings.handSize || 5; }
+        else { numDecks = msg.settings.tripleMode ? 3 : 2; handSize = 5; }
         wildCardSetting = msg.settings.wildCardSetting;
     }
     const isP1 = mp.myRole === 'p1';
@@ -2780,7 +2877,7 @@ function mpApplyRemoteState(msg) {
     const p1Turn = msg.p1Turn !== undefined ? msg.p1Turn : msg.playerTurn;
     playerTurn        = isP1 ? p1Turn : !p1Turn;
     score             = msg.score;
-    runStackCounts    = msg.runStackCounts    || [0,0,0,0,0];
+    runStackCounts    = msg.runStackCounts    || new Array(handSize).fill(0);
     runMultiplier     = msg.runMultiplier     || 0;
     currentRunStackIdx= msg.currentRunStackIdx ?? -1;
 
@@ -2791,7 +2888,7 @@ function mpApplyRemoteState(msg) {
     playerDiscard = isP1 ? msg.p1Discard : msg.p2Discard;
     aiDiscard     = isP1 ? msg.p2Discard : msg.p1Discard;
     // Merge maxDiscardDepth: keep track locally since host only knows P1's depths
-    const receivedDepth = isP1 ? (msg.p1MaxDepth || Array(5).fill(0)) : (msg.p2MaxDepth || Array(5).fill(0));
+    const receivedDepth = isP1 ? (msg.p1MaxDepth || Array(handSize).fill(0)) : (msg.p2MaxDepth || Array(handSize).fill(0));
     maxDiscardDepth = receivedDepth.map((v, i) => Math.max(v, maxDiscardDepth[i] || 0));
 
     if (msg.myName)  mp.oppName = msg.myName;
@@ -3275,7 +3372,7 @@ function mpCopyCode(inputId) {
 // We merge on receive: keep whichever is higher
 function mpMergeMaxDepth(received) {
     if (!received) return;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < handSize; i++) {
         maxDiscardDepth[i] = Math.max(maxDiscardDepth[i] || 0, received[i] || 0);
     }
 }
