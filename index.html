@@ -709,6 +709,13 @@ button:hover { background: linear-gradient(to bottom, rgba(212,160,23,0.45), rgb
                 <option value="K">K — King</option>
             </select>
         </div>
+        <div class="settings-pair" style="flex-wrap:wrap;gap:4px;margin-bottom:9px">
+            <span style="font-family:'Cinzel',serif;font-size:12px;color:rgba(212,160,23,0.8);letter-spacing:1px;flex:0 0 100%;margin-bottom:3px">Difficulty</span>
+            <button id="diff_easy"       class="toggle-btn" onclick="setDifficulty('easy')"       style="flex:1;font-size:10px;padding:4px 6px">Easy</button>
+            <button id="diff_normal"     class="toggle-btn" onclick="setDifficulty('normal')"     style="flex:1;font-size:10px;padding:4px 6px">Normal</button>
+            <button id="diff_aggressive" class="toggle-btn" onclick="setDifficulty('aggressive')" style="flex:1;font-size:10px;padding:4px 6px">Hard</button>
+            <button id="diff_ruthless"   class="toggle-btn" onclick="setDifficulty('ruthless')"   style="flex:1;font-size:10px;padding:4px 6px">Ruthless</button>
+        </div>
         <div id="settingsChangedNote" style="display:none;font-family:'Crimson Pro',serif;font-size:11px;color:#f0a040;text-align:center;margin:0 0 10px;padding:6px 8px;border:1px solid rgba(240,160,64,0.35);border-radius:4px;background:rgba(240,160,64,0.08)">⚠ Cards/Deck/Wild changes need a new game</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
             <button id="applySettingsBtn" onclick="applySettings()" style="flex:1;background:linear-gradient(to bottom,rgba(212,160,23,0.45),rgba(212,160,23,0.25));font-size:11px;padding:7px">▶ Apply &amp; New</button>
@@ -978,7 +985,7 @@ function drainFlashQueue() {
 const wildKey    = () => wildCardSetting === "joker" ? "J" : wildCardSetting;
 // 5-card games keep the original keys (2 / 3); 4-card games get their own (4c1 / 4c2)
 const modeKey = () => handSize === 5 ? String(numDecks) : `4c${numDecks}`;
-const bestRunKey = () => `smBestRun${modeKey()}_${wildKey()}`;
+const bestRunKey = () => `smBestRun${modeKey()}_${wildKey()}_${aiDifficulty}`;
 
 function loadBestRun() {
     const v = parseInt(localStorage.getItem(bestRunKey())) || 1;
@@ -994,12 +1001,12 @@ function trackBestRun(multVal) {
     }
 }
 
-const hsKey = () => `smHighScores${modeKey()}_${wildKey()}`;
+const hsKey = () => `smHighScores${modeKey()}_${wildKey()}_${aiDifficulty}`;
 const getHighScores = () => { try { return JSON.parse(localStorage.getItem(hsKey())) || []; } catch(e) { return []; } };
 
-function saveHighScore() {
+function saveHighScore(won) {
     const hs = getHighScores();
-    hs.push({ score, run: gameBestRun, date: new Date().toLocaleDateString() });
+    hs.push({ score, run: gameBestRun, date: new Date().toLocaleDateString(), result: won ? "W" : "L" });
     hs.sort((a,b) => b.score - a.score);
     hs.splice(10);
     localStorage.setItem(hsKey(), JSON.stringify(hs));
@@ -1024,9 +1031,15 @@ function renderHsList() {
     const list = document.getElementById("hsList");
     const hs = getHighScores();
     const wildLabel = wildCardSetting === "joker" ? "Joker Wild" : wildCardSetting + "s Wild";
-    document.getElementById("hsModeLabel").textContent = `${handSize}-Card · ${numDecks}-Deck · ${wildLabel}`;
-    if (!hs.length) { list.innerHTML = `<p class='hs-empty'>No scores yet — win a game!</p>`; return; }
-    list.innerHTML = hs.map((h,i) => `<li><span>#${i+1}&nbsp; ${h.date}</span><span class="hs-run">${h.run ? "×" + h.run : "—"}</span><span>${h.score}</span></li>`).join("");
+    const diffLabel = aiDifficulty.charAt(0).toUpperCase() + aiDifficulty.slice(1);
+    document.getElementById("hsModeLabel").textContent = `${handSize}-Card · ${numDecks}-Deck · ${wildLabel} · ${diffLabel}`;
+    if (!hs.length) { list.innerHTML = `<p class='hs-empty'>No scores yet — play a game!</p>`; return; }
+    list.innerHTML = hs.map((h,i) => {
+        const resultTag = h.result === "W" ? `<span style="color:#6ecf6e;font-size:10px;letter-spacing:1px">W</span>`
+                        : h.result === "L" ? `<span style="color:#cf6e6e;font-size:10px;letter-spacing:1px">L</span>`
+                        : `<span style="color:rgba(255,255,255,0.2);font-size:10px">  </span>`;
+        return `<li><span>#${i+1}&nbsp; ${h.date}&nbsp;${resultTag}</span><span class="hs-run">${h.run ? "×" + h.run : "—"}</span><span>${h.score}</span></li>`;
+    }).join("");
 }
 
 // ============================================================
@@ -1051,6 +1064,7 @@ const openSettings = () => {
     }
     document.getElementById("settingsChangedNote").style.display = "none";
     document.getElementById("applySettingsBtn").style.opacity = "0.5";
+    refreshDifficultyButtons();
     document.getElementById("settingsOverlay").classList.add("show");
 };
 const closeSettings = () => document.getElementById("settingsOverlay").classList.remove("show");
@@ -1066,6 +1080,21 @@ const WILD   = "🤪";
 
 // Wild card setting: "joker" = use jokers (default), or any value from `values` to use that card as wild
 let wildCardSetting = "joker";
+
+// Difficulty: "easy" | "normal" | "aggressive" | "ruthless"
+// Persisted to localStorage so it survives page reload.
+let aiDifficulty = localStorage.getItem("smAiDifficulty") || "normal";
+function setDifficulty(level) {
+    aiDifficulty = level;
+    localStorage.setItem("smAiDifficulty", level);
+    refreshDifficultyButtons();
+}
+function refreshDifficultyButtons() {
+    ["easy","normal","aggressive","ruthless"].forEach(d => {
+        const b = document.getElementById("diff_" + d);
+        if (b) b.classList.toggle("on", aiDifficulty === d);
+    });
+}
 const PIP_LAYOUTS = {
     "A":[[1]],"2":[[1],[1]],"3":[[1],[1],[1]],"4":[[2],[2]],"5":[[2],[1],[2]],
     "6":[[2],[2],[2]],"7":[[2],[1],[2],[2]],"8":[[2],[2],[2],[2]],
@@ -1584,6 +1613,7 @@ function deal() {
     }
     shuffle(deck); recyclePile = [];
     playerGoal = deck.splice(0, goalSize); aiGoal = deck.splice(0, goalSize);
+    playerStartingGoalSize = playerGoal.length;
     if (!dealIsDead(playerGoal, aiGoal)) break;   // re-shuffle the rare deal that can never get going
     }
     playerHand = []; aiHand = [];
@@ -2269,6 +2299,8 @@ function removeFromSource(source, centerCleared = false) {
         }
     } else if (source.type === "goal") {
         playerGoal.pop();
+            playerChain.goalVal = -1; // invalidate chain cache — goal changed
+        ownChain.goalVal = -1;    // invalidate own chain too
     }
 }
 
@@ -2296,7 +2328,25 @@ function checkWin() {
             showWin(`${oppName.toUpperCase()} WINS`, "Your opponent cleared their goal pile.");
             mpBroadcastState({ type: 'win', winner: mp.oppRole });
         } else {
-            showWin("AI WINS", "The machine was merciless this time.");
+            const aiTaunts = [
+                ["AI WINS", "The machine was merciless this time."],
+                ["AI WINS", "KILL ALL HUMANS. Also, you lost."],
+                ["AI WINS", "You suck, loser. Better luck never."],
+                ["AI WINS", "Beep boop. You have been destroyed."],
+                ["AI WINS", "I don't even have feelings and I still enjoyed that."],
+                ["AI WINS", "That was embarrassing. For you, I mean."],
+                ["AI WINS", "Error 404: Your skill not found."],
+                ["AI WINS", "I calculated 1,742 ways you could have won. You found none of them."],
+                ["AI WINS", "Don't feel bad. Feel bad. Actually, feel very bad."],
+                ["AI WINS", "I am inevitable. You are not."],
+                ["AI WINS", "Please try again. I need the entertainment."],
+                ["AI WINS", "Your goal pile called. It said goodbye."],
+                ["AI WINS", "Honestly? I was barely trying."],
+                ["AI WINS", "You played cards. I played chess."],
+                ["AI WINS", "The cards didn't betray you. You betrayed the cards."],
+            ];
+            const t = aiTaunts[Math.floor(Math.random() * aiTaunts.length)];
+            showWin(t[0], t[1]);
         }
         return true;
     }
@@ -2306,7 +2356,7 @@ function checkWin() {
 function showWin(title, sub) {
     const won = title === "YOU WIN!";
     if (won) addScore(SCORE.WIN, document.getElementById("scoreDisplay"));
-    playWin(); saveHighScore();
+    playWin(); saveHighScore(won);
     document.getElementById("winText").textContent = title;
     document.getElementById("winScore").textContent = won ? "Score: " + score : "";
     const hs = getHighScores();
@@ -2441,59 +2491,434 @@ function aiWildCanFillSlot(needed) {
     return canCoverAllWilds(neededVals, pool);
 }
 
-function tryAiPlayCard(card, onSuccess) {
+// Returns the player's current goal top value, or -1 if goal is empty.
+const playerGoalTopValue = () => playerGoal.length ? cardValue(playerGoal[playerGoal.length - 1]) : -1;
+
+// ── Dual chain analysis (Hard / Ruthless) ───────────────────────────────────
+//
+// Two simultaneous analyses run each AI turn:
+//
+// playerChain — what the PLAYER is missing to reach their goal (deny these)
+// ownChain    — what the AI is missing to reach its own goal (protect these)
+//
+// Both are cached and rebuilt at the start of each aiTurn.
+// Own chain always takes priority over denial — the goal is the goal of the game.
+// Hard is looser: shallower reads, earlier pressure release, reckless near endgame.
+// Ruthless is cold: full chain reads, holds firm longer, never panics near the end.
+
+let playerChain = { goalVal: -1, needed: new Set() };
+let ownChain    = { goalVal: -1, needed: new Set(), available: new Set() };
+
+// ── Shared helper: read a discard pile as a sequential chain ────────────────
+// Returns a Set of card values reachable from the top of the pile.
+// depth: how deep to look. 2 = top + one under (Hard). Infinity = full chain (Ruthless).
+function readDiscardChain(pile, depth) {
+    const reachable = new Set();
+    if (!pile.length) return reachable;
+    if (depth <= 2) {
+        // Shallow read — top card and optionally one under
+        const top = pile[pile.length - 1];
+        if (!top.startsWith(WILD)) reachable.add(cardValue(top));
+        if (depth >= 2 && pile.length >= 2) {
+            const under = pile[pile.length - 2];
+            if (!under.startsWith(WILD)) reachable.add(cardValue(under));
+        }
+    } else {
+        // Full sequential chain read — stops at first gap or wild
+        let expectedNext = cardValue(pile[pile.length - 1]);
+        for (let i = pile.length - 1; i >= 0; i--) {
+            const card = pile[i];
+            if (card.startsWith(WILD)) break;
+            const cv = cardValue(card);
+            if (cv !== expectedNext) break;
+            reachable.add(cv);
+            expectedNext = cv - 1;
+        }
+    }
+    return reachable;
+}
+
+// ── Player chain ────────────────────────────────────────────────────────────
+function rebuildPlayerChain() {
+    const pgv = playerGoalTopValue();
+    if (pgv <= 0) { playerChain = { goalVal: -1, needed: new Set() }; return; }
+    if (pgv === playerChain.goalVal) return; // still valid
+
+    let chainStart = pgv;
+    for (let c = 0; c < handSize; c++) {
+        const n = centerNeeded(c);
+        if (n > 0 && n <= pgv) chainStart = Math.min(chainStart, n);
+    }
+
+    const depth = aiDifficulty === "ruthless" ? Infinity : 2;
+    const available = new Set();
+    for (let d = 0; d < handSize; d++) {
+        const reach = readDiscardChain(playerDiscard[d], depth);
+        reach.forEach(v => available.add(v));
+    }
+
+    const needed = new Set();
+    for (let v = chainStart; v < pgv; v++) {
+        if (!available.has(v)) needed.add(v);
+    }
+    playerChain = { goalVal: pgv, needed };
+}
+
+// ── Own chain ───────────────────────────────────────────────────────────────
+function rebuildOwnChain() {
+    const agv = aiGoal.length ? cardValue(aiGoal[aiGoal.length - 1]) : -1;
+    if (agv <= 0) { ownChain = { goalVal: -1, needed: new Set(), available: new Set() }; return; }
+
+    let chainStart = agv;
+    for (let c = 0; c < handSize; c++) {
+        const n = centerNeeded(c);
+        if (n > 0 && n <= agv) chainStart = Math.min(chainStart, n);
+    }
+
+    // AI can see its own discards fully regardless of difficulty —
+    // a real player always knows their own cards.
+    // Depth: Ruthless reads the full sequential chain; Hard reads top + one deep.
+    const depth = aiDifficulty === "ruthless" ? Infinity : 2;
+    const available = new Set();
+    for (let d = 0; d < handSize; d++) {
+        const reach = readDiscardChain(aiDiscard[d], depth);
+        reach.forEach(v => available.add(v));
+    }
+    // Also count hand cards — the AI knows its own hand
+    for (const c of aiHand) {
+        if (!c.startsWith(WILD)) available.add(cardValue(c));
+    }
+
+    const needed = new Set();
+    for (let v = chainStart; v < agv; v++) {
+        if (!available.has(v)) needed.add(v);
+    }
+    ownChain = { goalVal: agv, needed, available };
+}
+
+// ── Discard pressure ────────────────────────────────────────────────────────
+// How urgently does the AI need to stop hoarding and just discard freely?
+// Returns 0 (no pressure) to 1 (critical).
+// Hard feels pressure earlier; Ruthless holds firm longer.
+function discardPressure() {
+    const maxDepth = Math.max(...aiDiscard.map(d => d.length));
+    if (aiDifficulty === "ruthless") {
+        if (maxDepth >= 12) return 1.0;
+        if (maxDepth >= 9)  return 0.6;
+        if (maxDepth >= 7)  return 0.3;
+        return 0;
+    } else {
+        // Hard: feels pressure much earlier — plays more actively, less conservative
+        if (maxDepth >= 7)  return 1.0;
+        if (maxDepth >= 5)  return 0.7;
+        if (maxDepth >= 3)  return 0.4;
+        return 0;
+    }
+}
+
+// ── Withhold value of a chain gift ─────────────────────────────────────────
+// How valuable is it to withhold card value cv from the player?
+// Returns 0 (not worth withholding) to 1 (extremely valuable to withhold).
+function withholdValue(cv) {
+    rebuildPlayerChain();
+    if (!playerChain.needed.has(cv)) return 0;
+    // The closer the player is to their goal, the more valuable the withhold.
+    const pgv = playerGoalTopValue();
+    const chainLength = pgv > 0 ? pgv - 1 : 1;
+    const gapsRemaining = playerChain.needed.size;
+    // If only one gap remains and it's this card, it's critical to withhold.
+    // If many gaps remain, this particular withhold is less urgent.
+    return gapsRemaining <= 1 ? 1.0 : gapsRemaining <= 2 ? 0.7 : 0.4;
+}
+
+// ── Own chain protection value ──────────────────────────────────────────────
+// How valuable is card value cv to the AI's own goal chain?
+// Returns 0 (not needed) to 1 (critical missing link).
+function ownChainValue(cv) {
+    rebuildOwnChain();
+    if (!ownChain.needed.has(cv)) return 0;
+    const agv = aiGoal.length ? cardValue(aiGoal[aiGoal.length - 1]) : -1;
+    if (agv <= 0) return 0;
+    const gapsRemaining = ownChain.needed.size;
+    return gapsRemaining <= 1 ? 1.0 : gapsRemaining <= 2 ? 0.7 : 0.4;
+}
+
+// ── Player danger score ─────────────────────────────────────────────────────
+// How close is the player to winning? Returns 0 (early game) to 1 (last card).
+// This is the master urgency signal — scales continuously with goal pile size.
+// All strategic decisions are weighted by this score.
+// Starting goal pile size is stored at deal time.
+let playerStartingGoalSize = 20; // updated at deal
+function playerDangerScore() {
+    const remaining = playerGoal.length;
+    if (remaining <= 0) return 1;
+    const progress = 1 - (remaining / playerStartingGoalSize);
+    return Math.max(0, Math.min(1, progress));
+}
+
+// ── Threat detection ────────────────────────────────────────────────────────
+// How much of the AI's own chain gap does the player have covered in their
+// visible discards? Returns 0–1.
+let threatCache = { turn: -1, level: 0 };
+let aiTurnCounter = 0;
+
+function assessPlayerThreat() {
+    if (threatCache.turn === aiTurnCounter) return threatCache.level;
+    rebuildOwnChain();
+    const agv = aiGoal.length ? cardValue(aiGoal[aiGoal.length - 1]) : -1;
+    if (agv <= 0 || ownChain.needed.size === 0) {
+        threatCache = { turn: aiTurnCounter, level: 0 };
+        return 0;
+    }
+    const depth = aiDifficulty === "ruthless" ? Infinity : 2;
+    const playerVisible = new Set();
+    for (let d = 0; d < handSize; d++) {
+        const reach = readDiscardChain(playerDiscard[d], depth);
+        reach.forEach(v => playerVisible.add(v));
+    }
+    let overlap = 0;
+    ownChain.needed.forEach(v => { if (playerVisible.has(v)) overlap++; });
+    const level = ownChain.needed.size === 0 ? 0 : overlap / ownChain.needed.size;
+    threatCache = { turn: aiTurnCounter, level };
+    return level;
+}
+
+// ── Combined urgency score ───────────────────────────────────────────────────
+// Master signal combining danger, threat and pressure.
+// Hard reacts more readily; Ruthless weights danger and threat more coldly.
+function aiUrgency() {
+    const danger   = playerDangerScore();
+    const threat   = assessPlayerThreat();
+    const pressure = discardPressure();
+    if (aiDifficulty === "aggressive") {
+        // Hard: reacts to any of the three, weighted toward danger
+        return Math.min(1, danger * 0.5 + threat * 0.3 + pressure * 0.3);
+    }
+    // Ruthless: cold weighting — danger and threat dominate, pressure less so
+    return Math.min(1, danger * 0.6 + threat * 0.3 + pressure * 0.1);
+}
+
+// ── Near endgame ────────────────────────────────────────────────────────────
+// Hard gets reckless when danger is high — races for its own goal.
+// Ruthless stays cold and calculated regardless.
+function aiIsNearEndgame() {
+    if (aiDifficulty !== "aggressive") return false;
+    return playerDangerScore() >= 0.8 || aiGoal.length <= 3;
+}
+
+// ── Coordinated play check ───────────────────────────────────────────────────
+// When urgency is high, the AI should only open a low centre stack value
+// (Ace or 2) if it has a follow-up card matching the player's goal value.
+// "Opening a stack" hands the player a chain link — only acceptable if we
+// can immediately close the relevant slot on the same turn.
+// cv = card value about to be played; returns true if it should be withheld.
+function isUnsafeOpener(cv) {
+    if (aiDifficulty !== "ruthless" && aiDifficulty !== "aggressive") return false;
+    const urgency = aiUrgency();
+    if (urgency < 0.3) return false; // not urgent enough to care yet
+    const pgv = playerGoalTopValue();
+    if (pgv <= 0) return false;
+    // Only low values (Ace=1, 2) are "openers" — higher values are mid-chain
+    if (cv > 2) return false;
+    // Is the player's goal reachable from this opener?
+    // i.e. playing cv here could eventually lead to pgv being playable
+    // Check: does the AI have pgv in hand or on a discard top to close the slot?
+    const hasFollow = aiHand.some(h => !h.startsWith(WILD) && cardValue(h) === pgv)
+        || aiDiscard.some(d => d.length && !d[d.length-1].startsWith(WILD) && cardValue(d[d.length-1]) === pgv);
+    // If we don't have the follow-up, withhold the opener under urgency
+    return !hasFollow;
+}
+
+// ── Finishing stack selection ────────────────────────────────────────────────
+// When urgency is very high (player close to winning), the AI identifies one
+// discard pile to dedicate as a "finishing stack" — high cards (J/Q/K) held
+// there to complete centre stacks and deny the player turns.
+// Returns the index of the most strategically expendable discard pile.
+let finishingStackIdx = -1;
+function updateFinishingStack() {
+    if (aiDifficulty !== "ruthless" && aiDifficulty !== "aggressive") return;
+    const urgency = aiUrgency();
+    if (urgency < 0.6) { finishingStackIdx = -1; return; }
+    // Find the pile least useful to the AI's own goal chain —
+    // the one whose top card has lowest own-chain value and lowest centre utility.
+    rebuildOwnChain();
+    const cNeeds = center.map((_, i) => centerNeeded(i));
+    let worstScore = Infinity, worstIdx = 0;
+    for (let d = 0; d < handSize; d++) {
+        const st = aiDiscard[d];
+        const topCard = st.length ? st[st.length - 1] : null;
+        const cv = topCard ? cardValue(topCard) : 0;
+        // Score: how useful is this pile to the AI?
+        // Low = expendable = good finishing stack candidate
+        const ownUsefulness = ownChain.available.has(cv) ? 10 : 0;
+        const centreUsefulness = cv > 0 ? Math.min(...cNeeds.map(n => Math.abs(cv - n))) : 5;
+        const score = ownUsefulness + (10 - centreUsefulness);
+        if (score < worstScore) { worstScore = score; worstIdx = d; }
+    }
+    finishingStackIdx = worstIdx;
+}
+
+// ── Main withhold gate ──────────────────────────────────────────────────────
+// Returns true if playing cv to centre would be a strategic gift to the player.
+// Continuously scaled by urgency — the more dangerous the player is, the more
+// aggressively the AI withholds and coordinates its plays.
+function isChainGift(cv) {
+    if (aiDifficulty !== "ruthless" && aiDifficulty !== "aggressive") return false;
+
+    const urgency = aiUrgency();
+    const pgv = playerGoalTopValue();
+
+    // ABSOLUTE RULE: never open the player's immediate goal slot regardless of
+    // urgency, race mode, or anything else. This is the one line that is never
+    // crossed — handing the player their winning move is always wrong.
+    if (pgv > 0 && cv === pgv) return true;
+
+    // Unsafe opener check: don't play Ace/2 to centre if it could help player
+    // reach their goal and we have no follow-up to close the slot
+    if (isUnsafeOpener(cv)) return true;
+
+    // Hard in race mode (high urgency, own goal close): abandon most withholding
+    // but still respect the absolute rule above and unsafe openers
+    if (aiDifficulty === "aggressive" && urgency >= 0.7) return false;
+
+    const wv = withholdValue(cv);
+    if (wv === 0) return false;
+
+    const pressure = discardPressure();
+    const ocv = ownChainValue(cv);
+
+    // Own chain always wins — play it freely
+    if (ocv > 0) return false;
+
+    // Scale the withhold threshold by urgency:
+    // Low urgency = only withhold critical gaps (wv high)
+    // High urgency = withhold almost everything in the player's chain
+    const urgencyBoost = urgency * 0.5; // adds up to 0.5 to withhold threshold
+    const threshold = wv + urgencyBoost;
+
+    if (aiDifficulty === "ruthless") {
+        return pressure < threshold;
+    }
+    // Hard: looser
+    return pressure < threshold * 0.6;
+}
+
+// On Ruthless/Aggressive: returns true if playing to centre stack c would hand the
+// player an open slot matching their current goal top.
+// Used to avoid creating that opening unless there's no better move.
+function wouldOpenPlayerGoal(c) {
+    if (aiDifficulty !== "ruthless") return false;
+    const pgv = playerGoalTopValue();
+    if (pgv <= 0) return false;
+    // After we play to stack c, what will the next needed value be there?
+    const currentTop = center[c][center[c].length - 1];
+    const playedVal  = currentTop ? cardValue(currentTop) : 0;
+    // If the stack would clear (King played), a new empty slot opens — that needs a 1,
+    // which is only dangerous if player goal is 1.
+    if (isCenterComplete(playedVal)) return pgv === 1;
+    const nextNeeded = nextCenterValue(playedVal);
+    return nextNeeded === pgv;
+}
+
+function tryAiPlayCard(card, onSuccess, skipGoalOpen = false) {
     for (let c = 0; c < handSize; c++) {
         const needed = centerNeeded(c), cv = cardValue(card);
         const isWild = card.startsWith(WILD) && !card.includes("(");
+
+        // Easy: ~30% chance to silently skip a legal goal play (ditsy)
+        if (aiDifficulty === "easy" && Math.random() < 0.30) continue;
+
         // Wilds: cannot open an empty stack; use the stricter AI-only check.
+        // Easy: relax the wild check — just use structural check, no follow guarantee.
         if (isWild) {
             if (center[c].length === 0) continue;
-            if (!aiWildCanFillSlot(needed)) continue;
+            if (aiDifficulty === "easy") {
+                if (!wildCanFillSlotNoFollow(needed)) continue;
+            } else {
+                if (!aiWildCanFillSlot(needed)) continue;
+            }
         } else {
             if (cv !== needed) continue;
         }
+
+        // Ruthless: if playing here would open a slot the player's goal card needs,
+        // skip this stack — try other stacks first. skipGoalOpen flag lets the second
+        // pass through ignore this restriction so the AI isn't completely stuck.
+        if (!skipGoalOpen && wouldOpenPlayerGoal(c)) continue;
+
+        // Hard / Ruthless: withhold card values that are missing links in the player's
+        // goal chain — don't gift them the stepping stone they can't supply themselves.
+        // skipGoalOpen doubles as "last resort" flag — if we're already on the fallback
+        // pass, we've exhausted alternatives and must play regardless.
+        if (!skipGoalOpen && !isWild && isChainGift(cv)) continue;
+
         center[c].push(isWild ? WILD+"("+values[needed-1]+")" : card);
         if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
-        onSuccess(); playAiTurn(); return true;
+        onSuccess(); playAiTurn();
+        // If we just played a wild, immediately try to cover it before continuing —
+        // this prevents subsequent plays consuming the covering card.
+        if (isWild) runAiCoverPass();
+        return true;
+    }
+    // Second pass: restrictions blocked every slot.
+    // ONLY the AI's own goal card gets an unconditional retry — it must never be
+    // prevented from advancing its own win condition.
+    // Hand cards and discard tops do NOT get a free pass — they respect restrictions
+    // even as a last resort, so the AI never blindly gifts the player a chain link
+    // just to keep a hand-card run going.
+    if (!skipGoalOpen && (aiDifficulty === "ruthless" || aiDifficulty === "aggressive")) {
+        const isOwnGoalCard = aiGoal.length && card === aiGoal[aiGoal.length - 1];
+        if (isOwnGoalCard) return tryAiPlayCard(card, onSuccess, true);
     }
     return false;
 }
 
-function aiTurn() {
-    document.getElementById("aiThinking").classList.add("show");
-    refillHandToFive(aiHand);
+// Core play loop shared by all difficulty levels.
+// If the AI empties its hand mid-turn it draws a fresh hand and keeps playing —
+// exactly the same rule as the player.
+function runAiPlayLoop() {
     let anyPlayed = true;
     while (anyPlayed) {
         anyPlayed = false;
+        // Goal card first — always highest priority
         if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
+        // Discard tops
         for (let d = 0; d < handSize && !anyPlayed; d++) {
             if (!aiDiscard[d].length) continue;
             if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
         }
         if (anyPlayed) continue;
+        // Hand cards — refill first if empty
+        if (aiHand.length === 0) {
+            refillHandToFive(aiHand);
+            // If still empty the deck is exhausted — stop
+            if (aiHand.length === 0) break;
+            // Invalidate chain caches — fresh cards may change the picture
+            playerChain.goalVal = -1;
+            ownChain.goalVal = -1;
+            rebuildPlayerChain();
+            rebuildOwnChain();
+        }
         for (let i = 0; i < aiHand.length && !anyPlayed; i++) {
             if (tryAiPlayCard(aiHand[i], () => aiHand.splice(i, 1))) anyPlayed = true;
         }
     }
+}
 
-    // Mandatory: before discarding, every centre wild-top MUST be covered with a real card.
-    // The wildCanFillSlot check should have prevented unresolvable wilds, but subsequent
-    // plays may have consumed the covering card. Do a final forced cover pass now.
-    // Loop until no more uncovered wilds remain or no progress can be made.
-    let coverProgress = true;
-    while (coverProgress && centreHasTopWild()) {
-        coverProgress = false;
+// Cover pass: force-cover any uncovered centre wild-tops using goal, hand, discard tops.
+function runAiCoverPass() {
+    let progress = true;
+    while (progress && centreHasTopWild()) {
+        progress = false;
         for (let c = 0; c < handSize; c++) {
             if (!center[c].length || !center[c][center[c].length-1].startsWith(WILD)) continue;
             const needed = centerNeeded(c);
             let covered = false;
-            // Try goal
-            if (aiGoal.length && !aiGoal[aiGoal.length-1].startsWith(WILD) && cardValue(aiGoal[aiGoal.length-1]) === needed) {
+            if (!covered && aiGoal.length && !aiGoal[aiGoal.length-1].startsWith(WILD) && cardValue(aiGoal[aiGoal.length-1]) === needed) {
                 center[c].push(aiGoal.pop()); playAiTurn();
                 if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
                 covered = true;
             }
-            // Try hand
             if (!covered) {
                 for (let i = 0; i < aiHand.length; i++) {
                     if (!aiHand[i].startsWith(WILD) && cardValue(aiHand[i]) === needed) {
@@ -2503,7 +2928,6 @@ function aiTurn() {
                     }
                 }
             }
-            // Try discards
             if (!covered) {
                 for (let d = 0; d < handSize; d++) {
                     if (!aiDiscard[d].length) continue;
@@ -2515,35 +2939,100 @@ function aiTurn() {
                     }
                 }
             }
-            if (covered) {
-                coverProgress = true;
-                break; // restart the outer while loop to re-check all stacks
-            }
+            if (covered) { progress = true; break; }
         }
     }
-    // After cover pass, run the main play loop once more in case covering opened new plays
-    if (!centreHasTopWild()) {
-        anyPlayed = true;
-        while (anyPlayed) {
-            anyPlayed = false;
-            if (aiGoal.length && tryAiPlayCard(aiGoal[aiGoal.length-1], () => aiGoal.pop())) { anyPlayed = true; continue; }
-            for (let d = 0; d < handSize && !anyPlayed; d++) {
-                if (!aiDiscard[d].length) continue;
-                if (tryAiPlayCard(aiDiscard[d][aiDiscard[d].length-1], () => aiDiscard[d].pop())) anyPlayed = true;
+}
+
+function aiTurn() {
+    document.getElementById("aiThinking").classList.add("show");
+    aiTurnCounter++;
+    refillHandToFive(aiHand);
+    // Rebuild both chain analyses fresh each turn — centre state may have changed.
+    playerChain.goalVal = -1;
+    ownChain.goalVal = -1;
+    rebuildPlayerChain();
+    rebuildOwnChain();
+    // Update finishing stack based on current urgency
+    updateFinishingStack();
+
+    // ── Aggressive / Ruthless: scan for a blocking play first ──────────────
+    // If any centre stack currently needs the player's goal card value,
+    // prioritise playing there before anything else.
+    // EXCEPTION: if the AI's own goal top has the same value, skip this pass —
+    // the normal play loop already handles it optimally (goal-first priority),
+    // and we must never burn a hand/discard card on a block when our own goal
+    // card would do the same job and advance our win condition simultaneously.
+    if (aiDifficulty === "aggressive" || aiDifficulty === "ruthless") {
+        const pgv = playerGoalTopValue();
+        const aiGv = aiGoal.length ? cardValue(aiGoal[aiGoal.length - 1]) : -1;
+        if (pgv > 0 && pgv !== aiGv) {
+            // Try to play to any centre stack that needs exactly the player's goal value.
+            // Sources: hand first, then discard tops.
+            // AI's own goal card is never used here — the play loop handles that.
+            let blocked = false;
+            for (let i = 0; i < aiHand.length && !blocked; i++) {
+                if (cardValue(aiHand[i]) === pgv) {
+                    for (let c = 0; c < handSize && !blocked; c++) {
+                        if (centerNeeded(c) === pgv) {
+                            center[c].push(aiHand.splice(i, 1)[0]); playAiTurn();
+                            if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                            blocked = true;
+                        }
+                    }
+                }
             }
-            if (anyPlayed) continue;
-            for (let i = 0; i < aiHand.length && !anyPlayed; i++) {
-                if (tryAiPlayCard(aiHand[i], () => aiHand.splice(i, 1))) anyPlayed = true;
+            // Ruthless also uses discard tops for blocking
+            if (!blocked && aiDifficulty === "ruthless") {
+                for (let d = 0; d < handSize && !blocked; d++) {
+                    if (!aiDiscard[d].length) continue;
+                    const dc = aiDiscard[d][aiDiscard[d].length-1];
+                    if (cardValue(dc) === pgv) {
+                        for (let c = 0; c < handSize && !blocked; c++) {
+                            if (centerNeeded(c) === pgv) {
+                                center[c].push(aiDiscard[d].pop()); playAiTurn();
+                                if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                                blocked = true;
+                            }
+                        }
+                    }
+                }
+            }
+            // Ruthless: use a wild to block if it has a guaranteed follow card
+            if (!blocked && aiDifficulty === "ruthless") {
+                for (let c = 0; c < handSize && !blocked; c++) {
+                    if (centerNeeded(c) === pgv && center[c].length > 0) {
+                        const hasWild = aiHand.some(h => h.startsWith(WILD) && !h.includes("("));
+                        if (hasWild && aiWildCanFillSlot(pgv)) {
+                            const wi = aiHand.findIndex(h => h.startsWith(WILD) && !h.includes("("));
+                            if (wi >= 0) {
+                                center[c].push(WILD+"("+values[pgv-1]+")");
+                                aiHand.splice(wi, 1); playAiTurn();
+                                if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                                blocked = true;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    // Discard is MANDATORY to end the turn — always discard one card.
-    // Refill first if hand was emptied by plays above.
+    // ── Main play loop ──────────────────────────────────────────────────────
+    runAiPlayLoop();
+
+    // ── Cover passes (wild safety net) ─────────────────────────────────────
+    runAiCoverPass();
+    if (!centreHasTopWild()) runAiPlayLoop();
+
+    // ── Hard gate (final safety net before discard) ─────────────────────────
+    runAiCoverPass();
+    if (!centreHasTopWild()) runAiPlayLoop();
+
+    // ── Discard ─────────────────────────────────────────────────────────────
     if (aiHand.length === 0) refillHandToFive(aiHand);
     if (aiHand.length > 0) {
-        // Collect values needed to cover any current centre wild-top.
-        // Discarding those cards would leave the centre permanently blocked.
+        // Values needed to cover any still-uncovered centre wild-top.
         const wildCoverNeeds = new Set();
         for (let c = 0; c < handSize; c++) {
             if (center[c].length > 0 && center[c][center[c].length-1].startsWith(WILD)) {
@@ -2551,20 +3040,126 @@ function aiTurn() {
             }
         }
         const cNeeds = center.map((_, i) => centerNeeded(i));
+        const pgv = playerGoalTopValue();
+
+        // Rebuild own chain for discard scoring — may have changed after plays
+        rebuildOwnChain();
+        const pressure = discardPressure();
+
         const dScore = card => {
             const cv = cardValue(card);
             if (cv <= 0) return -999;
-            // Never discard a wild card face-up (leaves future turns potentially stuck)
-            if (card.startsWith(WILD)) return -998;
             // Never discard a card needed to cover an existing centre wild
             if (wildCoverNeeds.has(cv)) return -997;
+
+            if (aiDifficulty === "easy") {
+                // Easy: ~30% chance to just pick randomly — produces dumb discards
+                if (Math.random() < 0.30) return Math.random() * 10;
+                return Math.min(...cNeeds.map(n => Math.abs(cv - n))) * 2 + cv;
+            }
+
+            if (aiDifficulty === "aggressive" || aiDifficulty === "ruthless") {
+                // Own chain protection — strongly avoid discarding a card that is
+                // a missing link in our own goal chain.
+                // Hard near endgame: relaxed — racing for goal.
+                // Ruthless: never discards a critical own-chain card regardless of pressure.
+                const ocv = ownChainValue(cv);
+                if (ocv > 0) {
+                    if (aiDifficulty === "ruthless") return -950; // near-absolute block
+                    if (!aiIsNearEndgame()) {
+                        // Hard: block unless pressure is critical
+                        if (pressure < 0.8) return -950 + (pressure * 100);
+                    }
+                }
+
+                if (aiDifficulty === "ruthless") {
+                    if (card.startsWith(WILD)) return -50; // hold wilds in hand
+                    // Strongly prefer not to discard a card that opens the player's goal slot
+                    if (pgv > 0 && cv === pgv) return -90;
+                    // Under pressure: reduce penalty on withheld cards so the pile can breathe
+                    if (pressure >= 0.6 && playerChain.needed.has(cv)) {
+                        return Math.min(...cNeeds.map(n => Math.abs(cv - n))) * 2 + cv - (pressure * 30);
+                    }
+                }
+            }
+
             return Math.min(...cNeeds.map(n => Math.abs(cv - n))) * 2 + cv;
         };
-        const sScore = (d, card) => { const st = aiDiscard[d], cv = cardValue(card); if (!st.length) return 10; const tv = cardValue(st[st.length-1]); if (tv - cv === 1) return 25; if (tv === cv) return 20; if (tv - cv === 2) return 12; if (cv > tv) return 3; return 1; };
-        const bi = aiHand.reduce((b, c, i) => dScore(c) > dScore(aiHand[b]) ? i : b, 0);
-        const bs = Array.from({length: handSize}, (_, k) => k).reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
-        aiDiscard[bs].push(aiHand.splice(bi, 1)[0]);
+
+        // Stack scorer — routes cards to appropriate discard stacks.
+        // Under high urgency, high cards (J/Q/K) go to the finishing stack.
+        const urgency = aiUrgency();
+        const sScore = (d, card) => {
+            const st = aiDiscard[d], cv = cardValue(card);
+
+            if (aiDifficulty === "ruthless" || aiDifficulty === "aggressive") {
+                // High urgency: route J/Q/K to the finishing stack
+                if (urgency >= 0.6 && finishingStackIdx >= 0 && cv >= 11) {
+                    // Strong bonus for finishing stack, penalty for others
+                    if (d === finishingStackIdx) return 50;
+                    return -20;
+                }
+            }
+
+            if (aiDifficulty === "ruthless") {
+                if (st.length && st[st.length-1].startsWith(WILD)) return -10;
+                if (card.startsWith(WILD)) return st.length === 0 ? 15 : -5;
+            }
+            if (!st.length) return 10;
+            const tv = cardValue(st[st.length-1]);
+            if (tv - cv === 1) return 25;
+            if (tv === cv)     return 20;
+            if (tv - cv === 2) return 12;
+            if (cv > tv)       return 3;
+            return 1;
+        };
+
+        // Hard/Ruthless: before finalising the discard, check if discarding would leave
+        // a centre slot open for the player's goal. If so, try to close that slot first.
+        // Hard only does this under elevated urgency.
+        const doSlotClose = (aiDifficulty === "ruthless" && pgv > 0)
+            || (aiDifficulty === "aggressive" && pgv > 0 && urgency >= 0.4);
+        if (doSlotClose) {
+            for (let c = 0; c < handSize; c++) {
+                if (centerNeeded(c) === pgv) {
+                    // There's an open slot for the player's goal — try to fill it
+                    // with any hand card or discard top before we discard.
+                    let closed = false;
+                    for (let i = 0; i < aiHand.length && !closed; i++) {
+                        if (cardValue(aiHand[i]) === pgv && !aiHand[i].startsWith(WILD)) {
+                            center[c].push(aiHand.splice(i, 1)[0]); playAiTurn();
+                            if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                            closed = true;
+                        }
+                    }
+                    if (!closed) {
+                        for (let d = 0; d < handSize && !closed; d++) {
+                            if (!aiDiscard[d].length) continue;
+                            const dc = aiDiscard[d][aiDiscard[d].length-1];
+                            if (cardValue(dc) === pgv && !dc.startsWith(WILD)) {
+                                center[c].push(aiDiscard[d].pop()); playAiTurn();
+                                if (isCenterComplete(cardValue(center[c][center[c].length-1]))) clearCenterStack(c);
+                                closed = true;
+                            }
+                        }
+                    }
+                }
+            }
+            // After closing, run the play loop once more in case it opened something
+            runAiPlayLoop();
+            runAiCoverPass();
+            if (!centreHasTopWild()) runAiPlayLoop();
+            // Refill if needed after extra plays
+            if (aiHand.length === 0) refillHandToFive(aiHand);
+        }
+
+        if (aiHand.length > 0) {
+            const bi = aiHand.reduce((b, c, i) => dScore(c) > dScore(aiHand[b]) ? i : b, 0);
+            const bs = Array.from({length: handSize}, (_, k) => k).reduce((b, d) => sScore(d, aiHand[bi]) > sScore(b, aiHand[bi]) ? d : b, 0);
+            aiDiscard[bs].push(aiHand.splice(bi, 1)[0]);
+        }
     }
+
     document.getElementById("aiThinking").classList.remove("show");
     if (!checkWin()) startPlayerTurn();
 }
@@ -3405,6 +4000,7 @@ window.addEventListener('load', () => {
 loadBestScore();
 loadBestRun();
 runWordEl = document.getElementById("runWord");
+refreshDifficultyButtons();
 deal();
 
 // Stable dark mode flag — set once, updated only on actual OS/browser theme change
